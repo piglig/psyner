@@ -140,9 +140,12 @@ func (s *PServer) GetFileList(w http.ResponseWriter, r *http.Request) {
 			serverFile := serverFile{}
 			serverFile.fileName = file
 			serverFile.md5 = utils.MD5(file)
+			serverFiles[file] = serverFile
 		}
 		s.files[req.Host] = serverFiles
 	}
+
+	fmt.Printf("%v\n", s.files[req.Host])
 
 	fmt.Fprintf(w, "%s", SUCCESS)
 }
