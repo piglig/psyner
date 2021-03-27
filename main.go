@@ -7,12 +7,12 @@ import (
 
 func main() {
 	nodes := []string{"10.10.4.54", "10.10.4.55"}
-	s := pnfs.New("10.10.4.54:9999", "./path", nodes)
+	s := pnfs.New("10.10.4.54:9998", "./path", nodes)
 	if s != nil {
 		fmt.Println("initialize success")
 	}
 
-	pnfs.PostLocalFiles("10.10.4.54:9999", "")
-	s.ReceiveFileFrom()
+	// pnfs.PostLocalFiles("10.10.4.54:9999", "")
+	// s.ReceiveFileFrom()
 	pnfs.Run(s)
 }
