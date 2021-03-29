@@ -220,13 +220,18 @@ func (s *PServer) SyncWithRemoteNode() {
 
 // receive file from remote server node
 func (s *PServer) DownloadFileFrom(filename string) {
-	resp, err := http.Get("http://10.10.4.54:9998/upload?file=" + filename)
+	resp, err := http.Get("http://10.10.4.54:9999/upload?file=" + filename)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Println("request status code:", resp.StatusCode)
+		return
+	}
 
 	_, params, err := mime.ParseMediaType(resp.Header.Get("Content-Disposition"))
 	if err != nil {
