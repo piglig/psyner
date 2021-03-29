@@ -1,7 +1,6 @@
 package pnfs
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -75,49 +74,44 @@ func getPathFiles(filePath string) []serverFile {
 	return serverFiles
 }
 
-type FileListReq struct {
-	Host     string   `json:"host"`
-	FileList []string `json:"file_list"`
-}
-
 func (s *PServer) PostLocalFileList(host, api, filePath string) {
-	res := &FileListReq{}
-	localFiles := getPathFiles(filePath)
-	localFilesSlice := []string{}
-	for _, file := range localFiles {
-		localFilesSlice = append(localFilesSlice, file.fileName)
-	}
+	// res := &FileListReq{}
+	// localFiles := getPathFiles(filePath)
+	// localFilesSlice := []string{}
+	// for _, file := range localFiles {
+	// 	localFilesSlice = append(localFilesSlice, file.fileName)
+	// }
 
-	res.FileList = localFilesSlice
-	res.Host = host
+	// res.FileList = localFilesSlice
+	// res.Host = host
 
-	jsonData, err := json.Marshal(res)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
+	// jsonData, err := json.Marshal(res)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// 	return
+	// }
 
-	resp, err := http.Post(host+api, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
+	// resp, err := http.Post(host+api, "application/json", bytes.NewBuffer(jsonData))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// 	return
+	// }
 
-	defer resp.Body.Close()
+	// defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("postLocalFiles resp code:%v\n", resp.StatusCode)
-		return
-	}
+	// if resp.StatusCode != http.StatusOK {
+	// 	log.Printf("postLocalFiles resp code:%v\n", resp.StatusCode)
+	// 	return
+	// }
 
-	respStr, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Println(err)
-	}
+	// respStr, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	log.Println(err)
+	// }
 
-	if string(respStr) != SUCCESS {
-		log.Printf("postLocalFiles resp str:%s", string(respStr))
-	}
+	// if string(respStr) != SUCCESS {
+	// 	log.Printf("postLocalFiles resp str:%s", string(respStr))
+	// }
 }
 
 const (
@@ -146,20 +140,7 @@ func (s *PServer) GetLocalFileList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonRes)
 
-	fmt.Printf("%s request get local[%s] files\n", getIP(r), s.addr)
-}
-
-func getIP(r *http.Request) string {
-	forwarded := r.Header.Get("X-FORWARDED-FOR")
-	if forwarded != "" {
-		return forwarded
-	}
-	return r.RemoteAddr
-}
-
-type RemoteFileListReq struct {
-	Host string `json:"host"`
-	Path string `json:"path"`
+	fmt.Printf("%s request get local[%s] files\n", utils.GetIP(r), s.addr)
 }
 
 func (s *PServer) getRemoteFiles(host, api string) {
@@ -309,11 +290,6 @@ func (s *PServer) DownloadFileFrom(host, api, filename string) {
 			break
 		}
 	}
-}
-
-type FileListRes struct {
-	Host     string   `json:"host"`
-	FileList []string `json:"file_list"`
 }
 
 func (s *PServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
