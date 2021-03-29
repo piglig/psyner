@@ -20,8 +20,8 @@ type HandlerFunc func(http.ResponseWriter, *http.Request)
 type NFSServer interface {
 	PING() string
 	UploadFileTo(writer http.ResponseWriter, request *http.Request)
-	GetFileList(w http.ResponseWriter, r *http.Request)
-	DownloadFileFrom(filename string)
+	GetLocalFileList(w http.ResponseWriter, r *http.Request)
+	DownloadFileFrom(host, filename string)
 
 	// use for http server
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
@@ -125,33 +125,65 @@ const (
 	FAIL    = "fail"
 )
 
-func (s *PServer) GetFileList(w http.ResponseWriter, r *http.Request) {
-	var req FileListReq
+type LocalFilesRes struct {
+	Files []string `json:"files"`
+}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+func (s *PServer) GetLocalFileList(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	res := &LocalFilesRes{}
+	for _, file := range s.localFiles {
+		res.Files = append(res.Files, file.fileName)
+	}
+
+	jsonRes, err := json.Marshal(res)
+	if err != nil {
+		log.Printf("postLocalFiles marshal to json err:%v", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonRes)
+
+	fmt.Printf("%s request get local[%s] files\n", getIP(r), s.addr)
+}
+
+func getIP(r *http.Request) string {
+	forwarded := r.Header.Get("X-FORWARDED-FOR")
+	if forwarded != "" {
+		return forwarded
+	}
+	return r.RemoteAddr
+}
+
+type RemoteFileListReq struct {
+	Host string `json:"host"`
+	Path string `json:"path"`
+}
+
+func (s *PServer) getRemoteFiles(host, api string) {
+	addr := host + "/" + api
+	resp, err := http.Get(addr)
+
+	if err != nil {
+		log.Printf("%s request get remote[%s] files", s.addr, addr)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("%s getRemoteFiles status code:%v", resp.StatusCode)
 		return
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if len(req.Host) > 0 && len(req.FileList) > 0 {
-		serverFiles := map[string]serverFile{}
-		for _, file := range req.FileList {
-			serverFile := serverFile{}
-			serverFile.fileName = file
-			serverFile.md5 = utils.MD5(file)
-			serverFiles[file] = serverFile
-		}
-		s.files[req.Host] = serverFiles
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("%s getRemoteFiles read body err:%v", err)
+		return
 	}
 
-	fmt.Printf("%v\n", s.files[req.Host])
-
-	fmt.Fprintf(w, "%s", SUCCESS)
-}
-
-func getRemoteFiles(host string) {
+	res := 
 
 }
 
@@ -208,18 +240,18 @@ func (s *PServer) UploadFileTo(writer http.ResponseWriter, request *http.Request
 
 func (s *PServer) SyncWithRemoteNode() {
 
-	// for _, localFile := range s.localFiles {
-	// 	for host, remoteFile := range s.files {
-	// 		if _, ok := remoteFile[localFile.fileName]; !ok {
-	// 			s.PostFileTo(host, localFile.fileName)
-	// 		}
-	// 	}
-	// }
+	for _, localFile := range s.localFiles {
+		for host, remoteFile := range s.files {
+			if _, ok := remoteFile[localFile.fileName]; !ok {
+				s.DownloadFileFrom("http://"+host, localFile.fileName)
+			}
+		}
+	}
 }
 
 // receive file from remote server node
-func (s *PServer) DownloadFileFrom(filename string) {
-	resp, err := http.Get("http://10.10.4.54:9999/upload?file=" + filename)
+func (s *PServer) DownloadFileFrom(host, filename string) {
+	resp, err := http.Get(host + "/upload?file=" + filename)
 	if err != nil {
 		log.Println(err)
 		return
@@ -289,8 +321,8 @@ func (s *PServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
 	case "/ping":
 		s.PONG(w, req)
-	case "/getFileList":
-		s.GetFileList(w, req)
+	case "/localFiles":
+		s.GetLocalFileList(w, req)
 	case "/upload":
 		s.UploadFileTo(w, req)
 	}
