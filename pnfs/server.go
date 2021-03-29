@@ -172,10 +172,9 @@ func (s *PServer) UploadFileTo(writer http.ResponseWriter, request *http.Request
 	}
 	fmt.Println("Client requests: " + filename)
 
-	md5File := utils.MD5(filename)
 	//Check if file exists and open
 	// Openfile, err := os.Open("files/" + Filename)
-	Openfile, err := os.Open(s.filePath + "/" + md5File)
+	Openfile, err := os.Open(s.filePath + "/" + filename)
 	if err != nil {
 		//File not found, send 404
 		http.Error(writer, "File not found.", 404)
@@ -242,6 +241,11 @@ func (s *PServer) DownloadFileFrom(filename string) {
 	log.Println(params)
 	fileName := params["filename"]
 
+	if s.isExistFile(fileName) {
+		log.Println(s.addr + " have the same file name:" + filename)
+		return
+	}
+
 	out, err := os.Create(s.filePath + "/" + fileName)
 	if err != nil {
 		log.Println(err)
@@ -288,8 +292,21 @@ func (s *PServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case "/getFileList":
 		s.GetFileList(w, req)
 	case "/upload":
-		s.PostFileTo(w, req)
+		s.UploadFileTo(w, req)
 	}
+}
+
+func (s *PServer) isExistFile(filename string) bool {
+	flag := false
+	md5Str := utils.MD5(filename)
+	for _, file := range s.localFiles {
+		if file.md5 == md5Str {
+			flag = true
+			break
+		}
+	}
+
+	return flag
 }
 
 func Run(nfs NFSServer) (err error) {
