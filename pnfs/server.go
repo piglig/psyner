@@ -19,7 +19,7 @@ type HandlerFunc func(http.ResponseWriter, *http.Request)
 
 type NFSServer interface {
 	PING() string
-	PostFileTo(writer http.ResponseWriter, request *http.Request)
+	UploadFileTo(writer http.ResponseWriter, request *http.Request)
 	GetFileList(w http.ResponseWriter, r *http.Request)
 	DownloadFileFrom(filename string)
 
@@ -163,7 +163,7 @@ func (s *PServer) PONG(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", "PONG")
 }
 
-func (s *PServer) PostFileTo(writer http.ResponseWriter, request *http.Request) {
+func (s *PServer) UploadFileTo(writer http.ResponseWriter, request *http.Request) {
 	filename := request.URL.Query().Get("file")
 	if filename == "" {
 		//Get not set, send a 400 bad request
@@ -282,6 +282,8 @@ func (s *PServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		s.PONG(w, req)
 	case "/getFileList":
 		s.GetFileList(w, req)
+	case "/upload":
+		s.PostFileTo(w, req)
 	}
 }
 
