@@ -12,7 +12,7 @@ func main() {
 		fmt.Println("initialize success")
 	}
 
-	s.PostLocalFiles("http://10.10.4.54:9998", "/getFileList", "./path")
+	s.PostLocalFileList("http://10.10.4.54:9998", "/getFileList", "./path")
 	// pnfs.PostLocalFiles("10.10.4.54:9999", "")
 	// s.ReceiveFileFrom()
 	pnfs.Run(s)

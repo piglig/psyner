@@ -10,6 +10,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"utils"
 )
@@ -18,9 +19,9 @@ type HandlerFunc func(http.ResponseWriter, *http.Request)
 
 type NFSServer interface {
 	PING() string
-	PostFileTo(string, string)
+	PostFileTo(writer http.ResponseWriter, request *http.Request)
 	GetFileList(w http.ResponseWriter, r *http.Request)
-	ReceiveFileFrom()
+	ReceiveFileFrom(filename string)
 
 	// use for http server
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
@@ -79,7 +80,7 @@ type FileListReq struct {
 	FileList []string `json:"file_list"`
 }
 
-func PostLocalFiles(host, api, filePath string) {
+func (s *PServer) PostLocalFileList(host, api, filePath string) {
 	res := &FileListReq{}
 	localFiles := getPathFiles(filePath)
 	localFilesSlice := []string{}
@@ -162,24 +163,64 @@ func (s *PServer) PONG(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", "PONG")
 }
 
-func (s *PServer) PostFileTo(url, fileName string) {
-	// file, handler, err := r.FormFile("file")
+func (s *PServer) PostFileTo(writer http.ResponseWriter, request *http.Request) {
+	filename := request.URL.Query().Get("file")
+	if filename == "" {
+		//Get not set, send a 400 bad request
+		http.Error(writer, "Get 'file' not specified in url.", 400)
+		return
+	}
+	fmt.Println("Client requests: " + filename)
+
+	md5File := utils.MD5(filename)
+	//Check if file exists and open
+	// Openfile, err := os.Open("files/" + Filename)
+	Openfile, err := os.Open(s.filePath + "/" + md5File)
+	if err != nil {
+		//File not found, send 404
+		http.Error(writer, "File not found.", 404)
+		return
+	}
+	defer Openfile.Close()
+	//File is found, create and send the correct headers
+
+	//Get the Content-Type of the file
+	//Create a buffer to store the header of the file in
+	FileHeader := make([]byte, 512)
+	//Copy the headers into the FileHeader buffer
+	Openfile.Read(FileHeader)
+	//Get content type of file
+	FileContentType := http.DetectContentType(FileHeader)
+
+	//Get the file size
+	FileStat, _ := Openfile.Stat()                     //Get info from file
+	FileSize := strconv.FormatInt(FileStat.Size(), 10) //Get file size as a string
+
+	//Send the headers
+	writer.Header().Set("Content-Disposition", "attachment; filename="+filename)
+	writer.Header().Set("Content-Type", FileContentType)
+	writer.Header().Set("Content-Length", FileSize)
+
+	//Send the file
+	//We read 512 bytes from the file already, so we reset the offset back to 0
+	Openfile.Seek(0, 0)
+	io.Copy(writer, Openfile) //'Copy' the file to the client
 }
 
 func (s *PServer) SyncWithRemoteNode() {
 
-	for _, localFile := range s.localFiles {
-		for host, remoteFile := range s.files {
-			if _, ok := remoteFile[localFile.fileName]; !ok {
-				s.PostFileTo(host, localFile.fileName)
-			}
-		}
-	}
+	// for _, localFile := range s.localFiles {
+	// 	for host, remoteFile := range s.files {
+	// 		if _, ok := remoteFile[localFile.fileName]; !ok {
+	// 			s.PostFileTo(host, localFile.fileName)
+	// 		}
+	// 	}
+	// }
 }
 
 // receive file from remote server node
-func (s *PServer) ReceiveFileFrom() {
-	resp, err := http.Get("http://10.10.4.54:9998/upload?file=girl.jpg")
+func (s *PServer) ReceiveFileFrom(filename string) {
+	resp, err := http.Get("http://10.10.4.54:9998/upload?file=" + filename)
 	if err != nil {
 		log.Println(err)
 		return
