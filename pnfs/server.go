@@ -21,7 +21,7 @@ type NFSServer interface {
 	PING() string
 	PostFileTo(writer http.ResponseWriter, request *http.Request)
 	GetFileList(w http.ResponseWriter, r *http.Request)
-	ReceiveFileFrom(filename string)
+	DownloadFileFrom(filename string)
 
 	// use for http server
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
@@ -219,7 +219,7 @@ func (s *PServer) SyncWithRemoteNode() {
 }
 
 // receive file from remote server node
-func (s *PServer) ReceiveFileFrom(filename string) {
+func (s *PServer) DownloadFileFrom(filename string) {
 	resp, err := http.Get("http://10.10.4.54:9998/upload?file=" + filename)
 	if err != nil {
 		log.Println(err)
