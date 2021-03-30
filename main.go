@@ -20,7 +20,7 @@ func main() {
 		for {
 			select {
 			case <-ticker2.C:
-				// s
+				s.SyncWithRemoteFileList()
 			case <-ticker.C:
 				s.SyncWithRemoteNode()
 				ticker = time.NewTicker(3 * time.Second)

@@ -144,7 +144,7 @@ func (s *PServer) GetLocalFileList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *PServer) getRemoteFiles(host, api string) {
-	addr := host + "/" + api
+	addr := host + api
 	resp, err := http.Get(addr)
 
 	if err != nil {
@@ -237,13 +237,18 @@ func (s *PServer) UploadFileTo(writer http.ResponseWriter, request *http.Request
 }
 
 func (s *PServer) SyncWithRemoteNode() {
-
 	for _, localFile := range s.localFiles {
 		for host, remoteFile := range s.files {
 			if _, ok := remoteFile[localFile.fileName]; !ok {
 				s.DownloadFileFrom("http://"+host, "/upload", localFile.fileName)
 			}
 		}
+	}
+}
+
+func (s *PServer) SyncWithRemoteFileList() {
+	for _, node := range s.nodes {
+		s.getRemoteFiles(node, "/localFiles")
 	}
 }
 
