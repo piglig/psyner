@@ -21,6 +21,7 @@ func main() {
 			select {
 			case <-ticker2.C:
 				s.SyncWithRemoteFileList()
+				ticker2 = time.NewTicker(1 * time.Second)
 			case <-ticker.C:
 				s.SyncWithRemoteNode()
 				ticker = time.NewTicker(3 * time.Second)
@@ -32,7 +33,7 @@ func main() {
 
 	}()
 
-	s.PostLocalFileList("http://10.10.4.54:9998", "/getFileList", "./path")
+	// s.PostLocalFileList("http://10.10.4.54:9998", "/getFileList", "./path")
 	// pnfs.PostLocalFiles("10.10.4.54:9999", "")
 	// s.ReceiveFileFrom()
 	pnfs.Run(s)
