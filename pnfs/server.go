@@ -140,15 +140,16 @@ func (s *PServer) GetLocalFileList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonRes)
 
-	fmt.Printf("%s request get local[%s] files\n", utils.GetIP(r), s.addr)
+	// fmt.Printf("%s request get local[%s] files\n", utils.GetIP(r), s.addr)
 }
 
 func (s *PServer) getRemoteFiles(host, api string) {
-	addr := host + api
+	addr := "http://" + host + api
 	resp, err := http.Get(addr)
 
 	if err != nil {
-		log.Printf("%s request get remote[%s] files", s.addr, addr)
+		log.Printf("%s request get remote[%s] files err: %v", s.addr, addr, err)
+		return
 	}
 
 	defer resp.Body.Close()
@@ -238,11 +239,31 @@ func (s *PServer) UploadFileTo(writer http.ResponseWriter, request *http.Request
 
 func (s *PServer) SyncWithRemoteNode() {
 	for _, localFile := range s.localFiles {
+		flag := false
 		for host, remoteFile := range s.files {
-			if _, ok := remoteFile[localFile.fileName]; !ok {
-				s.DownloadFileFrom("http://"+host, "/upload", localFile.fileName)
+			if _, ok := remoteFile[localFile.fileName]; ok {
+				flag = true
+				break
+				s.DownloadFileFrom(host, "/upload", localFile.fileName)
 			}
 		}
+
+	}
+
+	for host, remoteFile := range s.files {
+
+		flag := false
+		for _, localFile := range s.localFiles {
+			if _, ok := remoteFile[localFile.fileName]; ok {
+				flag = true
+				break
+			}
+		}
+
+		if !flag {
+			s.DownloadFileFrom(host, "/upload", remoteFile.fileName)
+		}
+
 	}
 }
 
@@ -254,7 +275,9 @@ func (s *PServer) SyncWithRemoteFileList() {
 
 // client for download file from remote server node
 func (s *PServer) DownloadFileFrom(host, api, filename string) {
-	resp, err := http.Get(host + api + "?file=" + filename)
+	addr := "http://" + host + api
+	resp, err := http.Get(addr + "?file=" + filename)
+	fmt.Printf("%s requests download file[%s] from %s", s.addr, filename, addr)
 	if err != nil {
 		log.Println(err)
 		return
@@ -295,6 +318,8 @@ func (s *PServer) DownloadFileFrom(host, api, filename string) {
 			break
 		}
 	}
+
+	log.Printf("%s download file[%s] from node[%f] success:", s.addr, filename, host)
 }
 
 func (s *PServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
