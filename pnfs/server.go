@@ -183,6 +183,7 @@ func (s *PServer) getRemoteFiles(host, api string) {
 		serverFiles[file] = serverFile
 	}
 
+	s.localFiles = getPathFiles(s.filePath)
 	s.files[host] = serverFiles
 }
 
