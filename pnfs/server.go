@@ -238,32 +238,32 @@ func (s *PServer) UploadFileTo(writer http.ResponseWriter, request *http.Request
 }
 
 func (s *PServer) SyncWithRemoteNode() {
-	for _, localFile := range s.localFiles {
-		flag := false
-		for host, remoteFile := range s.files {
-			if _, ok := remoteFile[localFile.fileName]; ok {
-				flag = true
-				break
-				s.DownloadFileFrom(host, "/upload", localFile.fileName)
-			}
-		}
+	// for _, localFile := range s.localFiles {
+	// 	flag := false
+	// 	for host, remoteFile := range s.files {
+	// 		if _, ok := remoteFile[localFile.fileName]; ok {
+	// 			flag = true
+	// 			break
+	// 			s.DownloadFileFrom(host, "/upload", localFile.fileName)
+	// 		}
+	// 	}
 
-	}
+	// }
 
 	for host, remoteFile := range s.files {
+		for fileName, _ := range remoteFile {
+			flag := false
+			for _, localFile := range s.localFiles {
+				if localFile.fileName == fileName {
+					flag = true
+					break
+				}
+			}
 
-		flag := false
-		for _, localFile := range s.localFiles {
-			if _, ok := remoteFile[localFile.fileName]; ok {
-				flag = true
-				break
+			if !flag {
+				s.DownloadFileFrom(host, "/upload", fileName)
 			}
 		}
-
-		if !flag {
-			s.DownloadFileFrom(host, "/upload", remoteFile.fileName)
-		}
-
 	}
 }
 
