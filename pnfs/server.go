@@ -319,6 +319,13 @@ func (s *PServer) DownloadFileFrom(host, api, filename string) {
 		}
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	downloadFile := serverFile{}
+	downloadFile.fileName = filename
+	downloadFile.md5 = utils.MD5(filename)
+	s.localFiles = append(s.localFiles, downloadFile)
+
 	log.Printf("%s download file[%s] from node[%f] success:", s.addr, filename, host)
 }
 
