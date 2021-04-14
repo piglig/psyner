@@ -17,7 +17,7 @@ import (
 type HandlerFunc func(http.ResponseWriter, *http.Request)
 
 type NFSServer interface {
-	PING() string
+	PING(host, api string) string
 	// server for other server node download
 	UploadFileTo(writer http.ResponseWriter, request *http.Request)
 	GetLocalFileList(w http.ResponseWriter, r *http.Request)
@@ -72,46 +72,6 @@ func getPathFiles(filePath string) []serverFile {
 		serverFiles = append(serverFiles, serverFile)
 	}
 	return serverFiles
-}
-
-func (s *PServer) PostLocalFileList(host, api, filePath string) {
-	// res := &FileListReq{}
-	// localFiles := getPathFiles(filePath)
-	// localFilesSlice := []string{}
-	// for _, file := range localFiles {
-	// 	localFilesSlice = append(localFilesSlice, file.fileName)
-	// }
-
-	// res.FileList = localFilesSlice
-	// res.Host = host
-
-	// jsonData, err := json.Marshal(res)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	return
-	// }
-
-	// resp, err := http.Post(host+api, "application/json", bytes.NewBuffer(jsonData))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	return
-	// }
-
-	// defer resp.Body.Close()
-
-	// if resp.StatusCode != http.StatusOK {
-	// 	log.Printf("postLocalFiles resp code:%v\n", resp.StatusCode)
-	// 	return
-	// }
-
-	// respStr, err := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	log.Println(err)
-	// }
-
-	// if string(respStr) != SUCCESS {
-	// 	log.Printf("postLocalFiles resp str:%s", string(respStr))
-	// }
 }
 
 const (
@@ -187,7 +147,7 @@ func (s *PServer) getRemoteFiles(host, api string) {
 	s.files[host] = serverFiles
 }
 
-func (s *PServer) PING() string {
+func (s *PServer) PING(host, api string) string {
 	return "PING"
 }
 
@@ -239,20 +199,8 @@ func (s *PServer) UploadFileTo(writer http.ResponseWriter, request *http.Request
 }
 
 func (s *PServer) SyncWithRemoteNode() {
-	// for _, localFile := range s.localFiles {
-	// 	flag := false
-	// 	for host, remoteFile := range s.files {
-	// 		if _, ok := remoteFile[localFile.fileName]; ok {
-	// 			flag = true
-	// 			break
-	// 			s.DownloadFileFrom(host, "/upload", localFile.fileName)
-	// 		}
-	// 	}
-
-	// }
-
 	for host, remoteFile := range s.files {
-		for fileName, _ := range remoteFile {
+		for fileName := range remoteFile {
 			flag := false
 			for _, localFile := range s.localFiles {
 				if localFile.fileName == fileName {
@@ -327,7 +275,7 @@ func (s *PServer) DownloadFileFrom(host, api, filename string) {
 	downloadFile.md5 = utils.MD5(filename)
 	s.localFiles = append(s.localFiles, downloadFile)
 
-	log.Printf("%s download file[%s] from node[%f] success:", s.addr, filename, host)
+	log.Printf("%s download file[%s] from node[%s] success:", s.addr, filename, host)
 }
 
 func (s *PServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
