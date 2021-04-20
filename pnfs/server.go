@@ -17,7 +17,7 @@ import (
 type HandlerFunc func(http.ResponseWriter, *http.Request)
 
 type NFSServer interface {
-	PING(host, api string) string
+	PING(host, api string)
 	// server for other server node download
 	UploadFileTo(writer http.ResponseWriter, request *http.Request)
 	GetLocalFileList(w http.ResponseWriter, r *http.Request)
@@ -77,6 +77,11 @@ func getPathFiles(filePath string) []serverFile {
 const (
 	SUCCESS = "success"
 	FAIL    = "fail"
+)
+
+const (
+	PING = "ping"
+	PONG = "pong"
 )
 
 type LocalFilesRes struct {
@@ -147,8 +152,34 @@ func (s *PServer) getRemoteFiles(host, api string) {
 	s.files[host] = serverFiles
 }
 
-func (s *PServer) PING(host, api string) string {
-	return "PING"
+func (s *PServer) PING(host, api string) {
+	addr := "http://" + host + api
+	resp, err := http.Get(addr)
+
+	if err != nil {
+		log.Printf("%s ping remote[%s] err: %v", s.addr, addr, err)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("%s ping remote status code:%v", s.addr, resp.StatusCode)
+		return
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("%s ping remote read body err:%v", s.addr, err)
+		return
+	}
+
+	if string(body) != PONG {
+
+		return
+	}
+
+	return
 }
 
 func (s *PServer) PONG(w http.ResponseWriter, r *http.Request) {
@@ -218,6 +249,7 @@ func (s *PServer) SyncWithRemoteNode() {
 
 func (s *PServer) SyncWithRemoteFileList() {
 	for _, node := range s.nodes {
+		s.PING(node, "/ping")
 		s.getRemoteFiles(node, "/localFiles")
 	}
 }
