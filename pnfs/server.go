@@ -157,7 +157,10 @@ func (s *PServer) PING(host, api string) {
 	resp, err := http.Get(addr)
 
 	if err != nil {
-		log.Printf("%s ping remote[%s] err: %v", s.addr, addr, err)
+		index := utils.GetAddrIndexFromNodes(host, s.nodes)
+		log.Printf("%s remove disconnect node:%s\n", s.addr, s.nodes[index])
+		s.nodes = append(s.nodes[:index], s.nodes[index+1:]...)
+		// log.Printf("%s ping remote[%s] err: %v", s.addr, addr, err)
 		return
 	}
 
