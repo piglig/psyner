@@ -176,6 +176,7 @@ func (s *PServer) PING(host, api string) {
 
 	if string(body) != PONG {
 		index := utils.GetAddrIndexFromNodes(host, s.nodes)
+		log.Printf("%s remove offline node:%s\n", s.addr, s.nodes[index])
 		s.nodes = append(s.nodes[:index], s.nodes[index+1:]...)
 		return
 	}
