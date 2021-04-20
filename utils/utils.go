@@ -18,3 +18,23 @@ func GetIP(r *http.Request) string {
 	}
 	return r.RemoteAddr
 }
+
+func GetAddrIndexFromNodes(target string, addrs []string) int {
+	res := 0
+	for i, addr := range addrs {
+		if addr == target {
+			res = i
+			break
+		}
+	}
+	return res
+}
+
+func IsAddrInNodes(target string, addrs []string) bool {
+	for _, addr := range addrs {
+		if addr == target {
+			return true
+		}
+	}
+	return false
+}

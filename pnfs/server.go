@@ -164,22 +164,27 @@ func (s *PServer) PING(host, api string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("%s ping remote status code:%v", s.addr, resp.StatusCode)
+		log.Printf("%s ping remote status code:%v\n", s.addr, resp.StatusCode)
 		return
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("%s ping remote read body err:%v", s.addr, err)
+		log.Printf("%s ping remote read body err:%v\n", s.addr, err)
 		return
 	}
 
 	if string(body) != PONG {
-
+		index := utils.GetAddrIndexFromNodes(host, s.nodes)
+		s.nodes = append(s.nodes[:index], s.nodes[index+1:]...)
 		return
 	}
 
-	return
+	if !utils.IsAddrInNodes(host, s.nodes) {
+		s.nodes = append(s.nodes, host)
+		log.Printf("%s add new node:%s\n", s.addr, host)
+		return
+	}
 }
 
 func (s *PServer) PONG(w http.ResponseWriter, r *http.Request) {
