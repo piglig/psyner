@@ -80,8 +80,8 @@ const (
 )
 
 const (
-	PING = "ping"
-	PONG = "pong"
+	PING = "PING"
+	PONG = "PONG"
 )
 
 type LocalFilesRes struct {
