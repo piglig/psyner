@@ -8,6 +8,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"sync"
@@ -34,6 +35,9 @@ type serverFile struct {
 
 type PServer struct {
 	localFiles []serverFile // the server node files
+	Alive bool // the server alive status
+	url url.URL // the server addr
+	filePath string // the server syncronize file path
 }
 
 type PServers struct {
