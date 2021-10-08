@@ -21,7 +21,6 @@ type NFSServerFunc interface {
 	// UploadFileTo server for other server node download
 	UploadFileTo(writer http.ResponseWriter, request *http.Request)
 	GetLocalFileList(w http.ResponseWriter, r *http.Request)
--
 	// ServeHTTP use for http server
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
@@ -35,9 +34,9 @@ type serverFile struct {
 
 type PServer struct {
 	localFiles []serverFile // the server node files
-	Alive bool // the server alive status
-	url url.URL // the server addr
-	filePath string // the server syncronize file path
+	Alive      bool         // the server alive status
+	url        url.URL      // the server addr
+	filePath   string       // the server syncronize file path
 }
 
 type PServers struct {
@@ -85,7 +84,6 @@ const (
 	SUCCESS = "success"
 	FAIL    = "fail"
 )
-
 
 type LocalFilesRes struct {
 	Files []string `json:"files"`
@@ -170,19 +168,6 @@ func (s *PServers) HealthCheck(host, api string) {
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("%s ping remote status code:%v\n", s.addr, resp.StatusCode)
-		return
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("%s ping remote read body err:%v\n", s.addr, err)
-		return
-	}
-
-	if string(body) != PONG {
-		index := utils.GetAddrIndexFromNodes(host, s.nodes)
-		log.Printf("%s remove offline node:%s\n", s.addr, s.nodes[index])
-		s.nodes = append(s.nodes[:index], s.nodes[index+1:]...)
 		return
 	}
 
