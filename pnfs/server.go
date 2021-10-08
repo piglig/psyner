@@ -33,7 +33,7 @@ type serverFile struct {
 }
 
 type PServer struct {
-
+	localFiles []serverFile // the server node files
 }
 
 type PServers struct {
