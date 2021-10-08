@@ -62,6 +62,10 @@ func New(addr, filePath string, nodes []string) *PServers {
 	}
 }
 
+func (p *PServer) GetLocalFileList() {
+
+}
+
 func getPathFiles(filePath string) []serverFile {
 	files, err := ioutil.ReadDir(filePath)
 	if err != nil {
