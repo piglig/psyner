@@ -3,16 +3,18 @@ package pnfs
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"mime"
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"sync"
 	"utils"
+)
+
+const (
+	UploadAPI     = "/upload"
+	LocalFilesAPI = "/files"
 )
 
 type HandlerFunc func(http.ResponseWriter, *http.Request)
@@ -25,57 +27,74 @@ type NFSServerFunc interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
-// pnfs file struct
-type serverFile struct {
-	fileName string
-	fileInfo os.FileInfo
-	md5      string
+// PFile pnfs file struct
+type PFile struct {
+	FileName string
+	FileInfo os.FileInfo
+	Md5      string
+
+	// ServerIndex the file locate at server id
+	ServerIndex int
 }
 
 type PServer struct {
-	localFiles []serverFile // the server node files
-	Alive      bool         // the server alive status
-	url        url.URL      // the server addr
-	filePath   string       // the server syncronize file path
+	// LocalFiles []PFile // the server node files
+	Alive bool     // the server alive status
+	Url   *url.URL // the server addr
+}
+
+type Temp struct {
+	servers []*PServer
+	files   []*PFile
+
+	mu sync.Mutex // protects currently request
 }
 
 type PServers struct {
-	files      map[string]map[string]serverFile // the other server node and files md5 string
-	nodes      []string                         // the server node host
-	filePath   string                           // the server node file path
-	localFiles []serverFile                     // the current server node files
+	servers []*PServer
 
-	addr string // ther server node host and port
+	files      map[string]map[string]PFile // the other server node and files md5 string
+	nodes      []string                    // the server node host
+	filePath   string                      // the server node file path
+	localFiles []PFile                     // the current server node files
+
+	addr string // the server node host and port
 
 	mu sync.Mutex // protects currently request
 }
 
 // New initial pnfs server
-func New(addr, filePath string, nodes []string) *PServers {
-	fmt.Printf("addr [%s], local file path[%s], server nodes%v\n", addr, filePath, nodes)
-	return &PServers{
-		addr:       addr,
-		files:      make(map[string]map[string]serverFile),
-		nodes:      nodes,
-		filePath:   filePath,
-		localFiles: getPathFiles(filePath),
+func New(addr, path string, nodes []*url.URL) *PServers {
+	s := &PServers{
+		addr:     addr,
+		filePath: path,
 	}
+	for _, node := range nodes {
+		server := &PServer{
+			Alive: true,
+			Url:   node,
+		}
+
+		s.servers = append(s.servers, server)
+	}
+	fmt.Printf("addr [%s], local file path[%s], server nodes%v\n", s.addr, s.filePath, nodes)
+	return s
 }
 
 func (p *PServer) GetLocalFileList() {
 
 }
 
-func getPathFiles(filePath string) []serverFile {
+func getPathFiles(filePath string) []PFile {
 	files, err := ioutil.ReadDir(filePath)
 	if err != nil {
 		log.Fatalf("read path[%s] files error: %v", filePath, err)
 		return nil
 	}
 
-	serverFiles := []serverFile{}
+	serverFiles := []PFile{}
 	for _, file := range files {
-		serverFile := serverFile{}
+		serverFile := PFile{}
 		// serverFile.fileInfo = file
 		serverFile.fileName = file.Name()
 		serverFile.md5 = utils.MD5(file.Name())
@@ -84,80 +103,8 @@ func getPathFiles(filePath string) []serverFile {
 	return serverFiles
 }
 
-const (
-	SUCCESS = "success"
-	FAIL    = "fail"
-)
-
-type LocalFilesRes struct {
-	Files []string `json:"files"`
-}
-
-func (s *PServers) GetLocalFileList(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	res := &LocalFilesRes{}
-	for _, file := range s.localFiles {
-		res.Files = append(res.Files, file.fileName)
-	}
-
-	jsonRes, err := json.Marshal(res)
-	if err != nil {
-		log.Printf("postLocalFiles marshal to json err:%v", err)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonRes)
-
-}
-
-func (s *PServers) getRemoteFiles(host, api string) {
-	addr := "http://" + host + api
-	resp, err := http.Get(addr)
-
-	if err != nil {
-		log.Printf("%s request get remote[%s] files err: %v", s.addr, addr, err)
-		return
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("%s getRemoteFiles status code:%v", s.addr, resp.StatusCode)
-		return
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("%s getRemoteFiles read body err:%v", s.addr, err)
-		return
-	}
-
-	res := &LocalFilesRes{}
-	if err := json.Unmarshal(body, &res); err != nil {
-		log.Printf("%s getRemoteFiles body to json err:%v", s.addr, err)
-		return
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	serverFiles := map[string]serverFile{}
-	// iterate the remote node file list
-	for _, file := range res.Files {
-		serverFile := serverFile{}
-		serverFile.fileName = file
-		serverFile.md5 = utils.MD5(file)
-		serverFiles[file] = serverFile
-	}
-
-	s.localFiles = getPathFiles(s.filePath)
-	s.files[host] = serverFiles
-}
-
-func (s *PServers) HealthCheck(host, api string) {
-	addr := "http://" + host + api
+func (s *PServers) HealthCheck() {
+	addr := "http://"
 	resp, err := http.Get(addr)
 
 	if err != nil {
@@ -182,49 +129,6 @@ func (s *PServers) HealthCheck(host, api string) {
 	}
 }
 
-func (s *PServers) UploadFileTo(writer http.ResponseWriter, request *http.Request) {
-	filename := request.URL.Query().Get("file")
-	if filename == "" {
-		//Get not set, send a 400 bad request
-		http.Error(writer, "Get 'file' not specified in url.", 400)
-		return
-	}
-	fmt.Println("Client requests: " + filename)
-
-	//Check if file exists and open
-	// Openfile, err := os.Open("files/" + Filename)
-	Openfile, err := os.Open(s.filePath + "/" + filename)
-	if err != nil {
-		//File not found, send 404
-		http.Error(writer, "File not found.", 404)
-		return
-	}
-	defer Openfile.Close()
-	//File is found, create and send the correct headers
-
-	//Get the Content-Type of the file
-	//Create a buffer to store the header of the file in
-	FileHeader := make([]byte, 512)
-	//Copy the headers into the FileHeader buffer
-	Openfile.Read(FileHeader)
-	//Get content type of file
-	FileContentType := http.DetectContentType(FileHeader)
-
-	//Get the file size
-	FileStat, _ := Openfile.Stat()                     //Get info from file
-	FileSize := strconv.FormatInt(FileStat.Size(), 10) //Get file size as a string
-
-	//Send the headers
-	writer.Header().Set("Content-Disposition", "attachment; filename="+filename)
-	writer.Header().Set("Content-Type", FileContentType)
-	writer.Header().Set("Content-Length", FileSize)
-
-	//Send the file
-	//We read 512 bytes from the file already, so we reset the offset back to 0
-	Openfile.Seek(0, 0)
-	io.Copy(writer, Openfile) //'Copy' the file to the client
-}
-
 func (s *PServers) SyncWithRemoteNode() {
 	for host, remoteFile := range s.files {
 		for fileName := range remoteFile {
@@ -237,7 +141,7 @@ func (s *PServers) SyncWithRemoteNode() {
 			}
 
 			if !flag {
-				s.DownloadFileFrom(host, "/upload", fileName)
+				s.DownloadFileFrom(host, UploadAPI, fileName)
 			}
 		}
 	}
@@ -245,71 +149,15 @@ func (s *PServers) SyncWithRemoteNode() {
 
 func (s *PServers) SyncWithRemoteFileList() {
 	for _, node := range s.nodes {
-		s.getRemoteFiles(node, "/localFiles")
+		s.getRemoteFiles(node, LocalFilesAPI)
 	}
-}
-
-// DownloadFileFrom client for download file from remote server node
-func (s *PServers) DownloadFileFrom(host, api, filename string) {
-	addr := "http://" + host + api
-	resp, err := http.Get(addr + "?file=" + filename)
-	fmt.Printf("%s requests download file[%s] from %s", s.addr, filename, addr)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Println("request status code:", resp.StatusCode)
-		return
-	}
-
-	_, params, err := mime.ParseMediaType(resp.Header.Get("Content-Disposition"))
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	log.Println(params)
-	fileName := params["filename"]
-
-	if s.isExistFile(fileName) {
-		log.Println(s.addr + " have the same file name:" + filename)
-		return
-	}
-
-	out, err := os.Create(s.filePath + "/" + fileName)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer out.Close()
-
-	// try to save file three times
-	for i := 0; i < 3; i++ {
-		_, err = io.Copy(out, resp.Body)
-		if err == nil {
-			break
-		}
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	downloadFile := serverFile{}
-	downloadFile.fileName = filename
-	downloadFile.md5 = utils.MD5(filename)
-	s.localFiles = append(s.localFiles, downloadFile)
-
-	log.Printf("%s download file[%s] from node[%s] success:", s.addr, filename, host)
 }
 
 func (s *PServers) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
-	case "/localFiles":
+	case LocalFilesAPI:
 		s.GetLocalFileList(w, req)
-	case "/upload":
+	case UploadAPI:
 		s.UploadFileTo(w, req)
 	}
 }
