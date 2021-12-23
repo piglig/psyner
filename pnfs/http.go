@@ -48,8 +48,8 @@ func (s *PServers) getRemoteFiles(host, api string) {
 	// iterate the remote node file list
 	for _, file := range res.Files {
 		serverFile := PFile{}
-		serverFile.fileName = file
-		serverFile.md5 = utils.MD5(file)
+		serverFile.FileName = file
+		serverFile.Md5 = utils.MD5(file)
 		serverFiles[file] = serverFile
 	}
 
@@ -149,8 +149,8 @@ func (s *PServers) DownloadFileFrom(host, api, filename string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	downloadFile := PFile{}
-	downloadFile.fileName = filename
-	downloadFile.md5 = utils.MD5(filename)
+	downloadFile.FileName = filename
+	downloadFile.Md5 = utils.MD5(filename)
 	s.localFiles = append(s.localFiles, downloadFile)
 
 	log.Printf("%s download file[%s] from node[%s] success:", s.addr, filename, host)
@@ -166,7 +166,7 @@ func (s *PServers) GetLocalFileList(w http.ResponseWriter, r *http.Request) {
 
 	res := &LocalFilesRes{}
 	for _, file := range s.localFiles {
-		res.Files = append(res.Files, file.fileName)
+		res.Files = append(res.Files, file.FileName)
 	}
 
 	jsonRes, err := json.Marshal(res)

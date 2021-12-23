@@ -60,7 +60,8 @@ type PServers struct {
 
 	addr string // the server node host and port
 
-	mu sync.Mutex // protects currently request
+	rwLock sync.RWMutex // rw lock
+	mu     sync.Mutex   // protects currently request
 }
 
 // New initial pnfs server
@@ -96,8 +97,8 @@ func getPathFiles(filePath string) []PFile {
 	for _, file := range files {
 		serverFile := PFile{}
 		// serverFile.fileInfo = file
-		serverFile.fileName = file.Name()
-		serverFile.md5 = utils.MD5(file.Name())
+		serverFile.FileName = file.Name()
+		serverFile.Md5 = utils.MD5(file.Name())
 		serverFiles = append(serverFiles, serverFile)
 	}
 	return serverFiles
@@ -134,7 +135,7 @@ func (s *PServers) SyncWithRemoteNode() {
 		for fileName := range remoteFile {
 			flag := false
 			for _, localFile := range s.localFiles {
-				if localFile.fileName == fileName {
+				if localFile.FileName == fileName {
 					flag = true
 					break
 				}
