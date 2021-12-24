@@ -9,8 +9,8 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"pnfs/utils"
 	"strconv"
-	"utils"
 )
 
 func (s *PServers) getRemoteFiles(host, api string) {
