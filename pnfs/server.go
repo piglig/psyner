@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"pnfs/cli"
 	"sync"
 	"utils"
 )
@@ -27,21 +28,42 @@ type NFSServerFunc interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
-// PFile pnfs file struct
-type PFile struct {
-	FileName string
-	FileInfo os.FileInfo
-	Md5      string
-
-	// ServerIndex the file locate at server id
-	ServerIndex int
+type PNfs struct {
 }
 
 type PServer struct {
-	// LocalFiles []PFile // the server node files
-	Alive bool     // the server alive status
-	Url   *url.URL // the server addr
+	host     string
+	port     int
+	active   bool
+	fsPath   string
+	isMaster bool
+	files    []PFile
 }
+
+func (p *PServer) IsActive() bool {
+	return p.active
+}
+
+type PFile struct {
+	file os.File
+	md5  string
+}
+
+// PFile pnfs file struct
+//type PFile struct {
+//	FileName string
+//	FileInfo os.FileInfo
+//	Md5      string
+//
+//	// ServerIndex the file locate at server id
+//	ServerIndex int
+//}
+
+//type PServer struct {
+//	// LocalFiles []PFile // the server node files
+//	Alive bool     // the server alive status
+//	Url   *url.URL // the server addr
+//}
 
 type Temp struct {
 	servers []*PServer
@@ -65,7 +87,11 @@ type PServers struct {
 }
 
 // New initial pnfs server
-func New(addr, path string, nodes []*url.URL) *PServers {
+func New(flag cli.PNFSFlag) *PNfs {
+
+}
+
+/*func New(addr, path string, nodes []*url.URL) *PServers {
 	s := &PServers{
 		addr:     addr,
 		filePath: path,
@@ -80,7 +106,7 @@ func New(addr, path string, nodes []*url.URL) *PServers {
 	}
 	fmt.Printf("addr [%s], local file path[%s], server nodes%v\n", s.addr, s.filePath, nodes)
 	return s
-}
+}*/
 
 func (p *PServer) GetLocalFileList() {
 
