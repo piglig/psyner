@@ -1,6 +1,9 @@
 package main
 
-import "pnfs/cli"
+import (
+	"fmt"
+	"pnfs/cli"
+)
 
 func main() {
 
@@ -8,6 +11,7 @@ func main() {
 	if pnfsFlag == nil {
 		return
 	}
+	fmt.Println(pnfsFlag)
 
 	//var nodeList string
 	//var port int

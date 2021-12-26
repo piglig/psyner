@@ -4,6 +4,7 @@ import (
 	"flag"
 	"net"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -13,29 +14,16 @@ const (
 	DirFlag    = "d" // data directory
 )
 
-type masterFlag struct {
-	set bool
-}
-
-func (m *masterFlag) Set(value string) error {
-	m.set = true
-	return nil
-}
-
-func (m *masterFlag) String() string {
-	return ""
-}
-
 type PNFSFlag struct {
-	master masterFlag
+	master bool
 	host   string
 	port   int
 	dir    string
 }
 
 func InitFlag() *PNFSFlag {
-	pnfsFlag := &PNFSFlag{}
-	flag.Var(&pnfsFlag.master, MasterFlag, "master node")
+	pnfsFlag := new(PNFSFlag)
+	flag.BoolVar(&pnfsFlag.master, MasterFlag, false, "master node")
 	flag.StringVar(&pnfsFlag.host, HostFlag, "127.0.0.1", "pnfs host")
 	flag.IntVar(&pnfsFlag.port, PortFlag, 3100, "pnfs port")
 	flag.StringVar(&pnfsFlag.dir, DirFlag, "/path", "pnfs file directory")
@@ -49,18 +37,13 @@ func InitFlag() *PNFSFlag {
 }
 
 func (p *PNFSFlag) checkFlag() bool {
-	// master node
-	if !p.master.set {
-		flag.Usage()
-		return false
-	}
-
 	// host
 	if net.ParseIP(p.host) == nil {
 		flag.Usage()
 		return false
 	}
 
+	p.dir = filepath.Join(".", p.dir)
 	// path
 	dir, err := os.Stat(p.dir)
 	if err != nil || !dir.IsDir() {
