@@ -1,10 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"pnfs/cli"
 	"sync"
 	"pnfs/utils"
@@ -82,12 +84,34 @@ func (p *PServer) IsActive() bool {
 type PFile struct {
 	file os.FileInfo
 	md5  string
+	relPath string
 }
 
 func GetPFileFromDir(dir string) ([]*PFile, error) {
-	files, err := ioutil.ReadDir(dir)
+	res := make([]*PFile, 0)
+	err := filepath.Walk(dir,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			relPath, err := filepath.Rel(dir, path)
+			if err != nil {
+				return err
+			}
+
+			p := &PFile{
+				file: info,
+				relPath: relPath,
+				md5:  utils.MD5(relPath),
+			}
+
+			res = append(res, p)
+
+			fmt.Println(path, relPath, info.Size(), info.IsDir())
+			return nil
+		})
 	if err != nil {
-		return nil, err
+		log.Println(err)
 	}
 
 	res := make([]*PFile, 10)

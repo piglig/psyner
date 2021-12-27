@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 	"pnfs/cli"
 )
 
@@ -12,6 +15,23 @@ func main() {
 		return
 	}
 	fmt.Println(pnfsFlag)
+
+	err := filepath.Walk(pnfsFlag.GetFilePath(),
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			relPath, err := filepath.Rel(pnfsFlag.GetFilePath(), path)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(path, relPath, info.Size(), info.IsDir(), info.Name())
+			return nil
+		})
+	if err != nil {
+		log.Println(err)
+	}
 
 	//var nodeList string
 	//var port int
