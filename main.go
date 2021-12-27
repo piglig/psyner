@@ -36,7 +36,7 @@ func main() {
 	//}
 	//
 	//nodes := []string{"10.10.4.54:9998"}
-	//s := pnfs.New("10.10.4.54:9999", "./path", servers)
+	//s := server.New("10.10.4.54:9999", "./path", servers)
 	//if s != nil {
 	//	fmt.Println("initialize success")
 	//}
@@ -61,5 +61,5 @@ func main() {
 	//
 	//}()
 	//
-	//pnfs.Run(s)
+	//server.Run(s)
 }

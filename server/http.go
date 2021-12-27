@@ -1,4 +1,4 @@
-package pnfs
+package server
 
 import (
 	"encoding/json"
@@ -9,11 +9,12 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"pnfs"
 	"pnfs/utils"
 	"strconv"
 )
 
-func (s *PServers) getRemoteFiles(host, api string) {
+func (s *main.PServers) getRemoteFiles(host, api string) {
 	addr := "http://" + host + api
 	resp, err := http.Get(addr)
 
@@ -44,20 +45,20 @@ func (s *PServers) getRemoteFiles(host, api string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	serverFiles := map[string]PFile{}
+	serverFiles := map[string]main.PFile{}
 	// iterate the remote node file list
 	for _, file := range res.Files {
-		serverFile := PFile{}
+		serverFile := main.PFile{}
 		serverFile.FileName = file
 		serverFile.Md5 = utils.MD5(file)
 		serverFiles[file] = serverFile
 	}
 
-	s.localFiles = getPathFiles(s.filePath)
+	s.localFiles = main.getPathFiles(s.filePath)
 	s.files[host] = serverFiles
 }
 
-func (s *PServers) UploadFileTo(writer http.ResponseWriter, request *http.Request) {
+func (s *main.PServers) UploadFileTo(writer http.ResponseWriter, request *http.Request) {
 	filename := request.URL.Query().Get("file")
 	if filename == "" {
 		//Get not set, send a 400 bad request
@@ -101,7 +102,7 @@ func (s *PServers) UploadFileTo(writer http.ResponseWriter, request *http.Reques
 }
 
 // DownloadFileFrom client for download file from remote server node
-func (s *PServers) DownloadFileFrom(host, api, filename string) {
+func (s *main.PServers) DownloadFileFrom(host, api, filename string) {
 	addr := "http://" + host + api
 	resp, err := http.Get(addr + "?file=" + filename)
 	fmt.Printf("%s requests download file[%s] from %s", s.addr, filename, addr)
@@ -148,7 +149,7 @@ func (s *PServers) DownloadFileFrom(host, api, filename string) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	downloadFile := PFile{}
+	downloadFile := main.PFile{}
 	downloadFile.FileName = filename
 	downloadFile.Md5 = utils.MD5(filename)
 	s.localFiles = append(s.localFiles, downloadFile)
@@ -160,7 +161,7 @@ type LocalFilesRes struct {
 	Files []string `json:"files"`
 }
 
-func (s *PServers) GetLocalFileList(w http.ResponseWriter, r *http.Request) {
+func (s *main.PServers) GetLocalFileList(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

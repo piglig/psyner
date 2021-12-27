@@ -1,16 +1,13 @@
-package pnfs
+package server
 
 import (
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"pnfs/cli"
 	"sync"
-	"utils"
+	"pnfs/utils"
 )
 
 const (
@@ -20,16 +17,53 @@ const (
 
 type HandlerFunc func(http.ResponseWriter, *http.Request)
 
-type NFSServerFunc interface {
+type NfsServerFunc interface {
 	// UploadFileTo server for other server node download
 	UploadFileTo(writer http.ResponseWriter, request *http.Request)
 	GetLocalFileList(w http.ResponseWriter, r *http.Request)
 	// ServeHTTP use for http server
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
+
+	// Ping check server is normal
+	Ping(w http.ResponseWriter, r *http.Request)
+	// Pong response server check status
+	Pong(w http.ResponseWriter, r *http.Request)
 }
 
 type PNfs struct {
+	servers      []*PServer
+	rwm          sync.RWMutex
+	fileToServer FileToServer
+	masterAddr   string
 }
+
+type FileToServer map[string]PFile
+
+// New initial server server
+func New(flag cli.PNFSFlag) (*PNfs, error) {
+	res := &PNfs{}
+	if flag.IsMaster() {
+		res.fileToServer = make(FileToServer, 0)
+
+		return res, nil
+	}
+
+	// master addr
+	res.masterAddr = flag.GetMasterAddr()
+	host, port := flag.GetHostPort()
+	server := PServer{
+		host:     host,
+		port:     port,
+		active:   false,
+		fsPath:   flag.GetFilePath(),
+		isMaster: false,
+	}
+
+
+
+	for
+}
+
 
 type PServer struct {
 	host     string
@@ -37,19 +71,37 @@ type PServer struct {
 	active   bool
 	fsPath   string
 	isMaster bool
-	files    []PFile
+	files    []*PFile
 }
 
 func (p *PServer) IsActive() bool {
 	return p.active
 }
 
+
 type PFile struct {
-	file os.File
+	file os.FileInfo
 	md5  string
 }
 
-// PFile pnfs file struct
+func GetPFileFromDir(dir string) ([]*PFile, error) {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*PFile, 10)
+	for _, file := range files {
+		p := &PFile{}
+		p.file = file
+		p.md5 = utils.MD5(file.Name())
+
+		res = append(res, p)
+	}
+	return res, nil
+}
+
+// PFile server file struct
 //type PFile struct {
 //	FileName string
 //	FileInfo os.FileInfo
@@ -86,10 +138,7 @@ type PServers struct {
 	mu     sync.Mutex   // protects currently request
 }
 
-// New initial pnfs server
-func New(flag cli.PNFSFlag) *PNfs {
 
-}
 
 /*func New(addr, path string, nodes []*url.URL) *PServers {
 	s := &PServers{
