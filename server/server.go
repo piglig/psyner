@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"pnfs/cli"
-	"sync"
 	"pnfs/utils"
+	"strconv"
+	"sync"
 )
 
 const (
@@ -39,21 +41,29 @@ type PNfs struct {
 	masterAddr   string
 }
 
-type FileToServer map[string]PFile
+type FileToServer map[string][]*PFile
 
-// New initial server server
+// New initial pnfs server
 func New(flag cli.PNFSFlag) (*PNfs, error) {
 	res := &PNfs{}
-	if flag.IsMaster() {
-		res.fileToServer = make(FileToServer, 0)
+	res.fileToServer = make(FileToServer)
 
+	host, port := flag.GetHostPort()
+	if flag.IsMaster() {
+		server := &PServer{
+			host:     host,
+			port:     port,
+			active:   false,
+			fsPath:   "",
+			isMaster: true,
+		}
+		res.servers = append(res.servers, server)
 		return res, nil
 	}
 
 	// master addr
 	res.masterAddr = flag.GetMasterAddr()
-	host, port := flag.GetHostPort()
-	server := PServer{
+	server := &PServer{
 		host:     host,
 		port:     port,
 		active:   false,
@@ -61,11 +71,16 @@ func New(flag cli.PNFSFlag) (*PNfs, error) {
 		isMaster: false,
 	}
 
-
-
-	for
+	// get files from dir
+	files, err := GetPFileFromDir(server.fsPath)
+	if err != nil {
+		return nil, err
+	}
+	server.files = files
+	res.fileToServer[net.JoinHostPort(host, strconv.Itoa(port))] = files
+	res.servers = append(res.servers, server)
+	return res, nil
 }
-
 
 type PServer struct {
 	host     string
@@ -80,10 +95,9 @@ func (p *PServer) IsActive() bool {
 	return p.active
 }
 
-
 type PFile struct {
-	file os.FileInfo
-	md5  string
+	file    os.FileInfo
+	md5     string
 	relPath string
 }
 
@@ -100,27 +114,19 @@ func GetPFileFromDir(dir string) ([]*PFile, error) {
 			}
 
 			p := &PFile{
-				file: info,
+				file:    info,
 				relPath: relPath,
-				md5:  utils.MD5(relPath),
+				md5:     utils.MD5(relPath),
 			}
 
 			res = append(res, p)
 
-			fmt.Println(path, relPath, info.Size(), info.IsDir())
+			//fmt.Println(path, relPath, info.Size(), info.IsDir())
 			return nil
 		})
 	if err != nil {
 		log.Println(err)
-	}
-
-	res := make([]*PFile, 10)
-	for _, file := range files {
-		p := &PFile{}
-		p.file = file
-		p.md5 = utils.MD5(file.Name())
-
-		res = append(res, p)
+		return nil, err
 	}
 	return res, nil
 }
@@ -161,8 +167,6 @@ type PServers struct {
 	rwLock sync.RWMutex // rw lock
 	mu     sync.Mutex   // protects currently request
 }
-
-
 
 /*func New(addr, path string, nodes []*url.URL) *PServers {
 	s := &PServers{
