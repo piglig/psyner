@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -30,8 +29,6 @@ type NfsServerFunc interface {
 
 	// Ping check server is normal
 	Ping(w http.ResponseWriter, r *http.Request)
-	// Pong response server check status
-	Pong(w http.ResponseWriter, r *http.Request)
 }
 
 type PNfs struct {
@@ -185,8 +182,23 @@ type PServers struct {
 	return s
 }*/
 
-func (p *PServer) GetLocalFileList() {
+func (p *PServer) GetLocalFileList() []*PFile {
+	return p.files
+}
 
+func (p *PServer) isExistFile(md5 string) bool {
+	exist := false
+	if !p.active {
+		return exist
+	}
+
+	for _, f := range p.files {
+		if f.md5 == md5 {
+			exist = true
+			break
+		}
+	}
+	return exist
 }
 
 func getPathFiles(filePath string) []PFile {

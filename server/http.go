@@ -9,10 +9,13 @@ import (
 	"mime"
 	"net/http"
 	"os"
-	"pnfs"
 	"pnfs/utils"
 	"strconv"
 )
+
+func (p *PNfs) Ping(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "PONG")
+}
 
 func (s *main.PServers) getRemoteFiles(host, api string) {
 	addr := "http://" + host + api
