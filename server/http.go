@@ -13,8 +13,65 @@ import (
 	"strconv"
 )
 
-func (p *PNfs) Ping(w http.ResponseWriter, r *http.Request) {
+const (
+	FileListAPI = "files"
+)
+
+type Data struct {
+	Code int
+	Msg  string
+}
+
+func result(w http.ResponseWriter, code int, msg string) {
+	data := Data{Code: code, Msg: msg}
+	dataBytes, _ := json.Marshal(&data)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	w.Write(dataBytes)
+}
+
+func (p *PServer) Ping(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "PONG")
+}
+
+func (p *PServer) GetUnSyncedFile(w http.ResponseWriter, r *http.Request) {
+	if p.isMaster {
+	} else {
+		fileURL := p.masterAddr + "/" + FileListAPI
+		resp, err := http.Get(fileURL)
+		if err != nil {
+			log.Println("GetUnSyncedFile", "err", err)
+			result(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			result(w, http.StatusInternalServerError, err.Error())
+			log.Fatal(err)
+		}
+		f := PFile{}
+		if err = json.Unmarshal(body, &f); err != nil {
+			log.Println("GetUnSyncedFile", "err", err)
+			result(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		exist := false
+		for _, localFile := range p.files {
+			if localFile.md5 == f.md5 {
+				exist = true
+				break
+			}
+		}
+
+		if !exist {
+			p.rwm.Lock()
+			defer p.rwm.Unlock()
+			p.files = append(p.files, f)
+		}
+	}
+	result(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
 func (s *main.PServers) getRemoteFiles(host, api string) {

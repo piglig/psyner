@@ -23,7 +23,7 @@ type HandlerFunc func(http.ResponseWriter, *http.Request)
 type NfsServerFunc interface {
 	// UploadFileTo server for other server node download
 	UploadFileTo(writer http.ResponseWriter, request *http.Request)
-	GetLocalFileList(w http.ResponseWriter, r *http.Request)
+	GetFileListFromServer(w http.ResponseWriter, r *http.Request)
 	// ServeHTTP use for http server
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 
@@ -38,7 +38,7 @@ type PNfs struct {
 	masterAddr   string
 }
 
-type FileToServer map[string][]*PFile
+type FileToServer map[string][]PFile
 
 // New initial pnfs server
 func New(flag cli.PNFSFlag) (*PNfs, error) {
@@ -80,12 +80,14 @@ func New(flag cli.PNFSFlag) (*PNfs, error) {
 }
 
 type PServer struct {
-	host     string
-	port     int
-	active   bool
-	fsPath   string
-	isMaster bool
-	files    []*PFile
+	host       string
+	port       int
+	active     bool
+	fsPath     string
+	isMaster   bool
+	masterAddr string
+	files      []PFile
+	rwm        sync.RWMutex
 }
 
 func (p *PServer) IsActive() bool {
@@ -98,8 +100,8 @@ type PFile struct {
 	relPath string
 }
 
-func GetPFileFromDir(dir string) ([]*PFile, error) {
-	res := make([]*PFile, 0)
+func GetPFileFromDir(dir string) ([]PFile, error) {
+	res := make([]PFile, 0)
 	err := filepath.Walk(dir,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -110,7 +112,7 @@ func GetPFileFromDir(dir string) ([]*PFile, error) {
 				return err
 			}
 
-			p := &PFile{
+			p := PFile{
 				file:    info,
 				relPath: relPath,
 				md5:     utils.MD5(relPath),
@@ -118,7 +120,6 @@ func GetPFileFromDir(dir string) ([]*PFile, error) {
 
 			res = append(res, p)
 
-			//fmt.Println(path, relPath, info.Size(), info.IsDir())
 			return nil
 		})
 	if err != nil {
