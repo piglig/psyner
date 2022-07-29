@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"mime"
+	"net"
 	"net/http"
 	"os"
 	"pnfs/utils"
@@ -34,7 +35,7 @@ func (p *PServer) Ping(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "PONG")
 }
 
-func (p *PServer) GetUnSyncedFile(w http.ResponseWriter, r *http.Request) {
+func (p *PServer) GetUnSyncedFileFromMaster(w http.ResponseWriter, r *http.Request) {
 	if p.isMaster {
 	} else {
 		fileURL := p.masterAddr + "/" + FileListAPI
@@ -72,6 +73,66 @@ func (p *PServer) GetUnSyncedFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	result(w, http.StatusOK, http.StatusText(http.StatusOK))
+}
+
+func GetHostPort(r *http.Request) (string, string) {
+	host := r.URL.Query().Get("host")
+	port := r.URL.Query().Get("port")
+	return host, port
+}
+
+func (p *PNfs) GetServer(host, port string) PServer {
+	for _, server := range p.servers {
+		if net.JoinHostPort(server.host, server.port) == net.JoinHostPort(host, port) {
+			return server
+		}
+	}
+	return PServer{host: host, port: port}
+}
+
+func (p *PNfs) GetUnSyncedFile(w http.ResponseWriter, r *http.Request) {
+	host, port := GetHostPort(r)
+
+	exist := false
+	for _, s := range p.servers {
+		if s.host == host && s.port == port {
+			exist = true
+			break
+		}
+	}
+
+	if exist {
+		serverFiles := p.serverToFiles[net.JoinHostPort(host, port)]
+
+	} else {
+		server := p.GetServer(host, port)
+		p.addServer(server)
+	}
+}
+
+func (p *PNfs) IsExistInFiles(f PFile) bool {
+	for _, file := range p.files {
+		if file.md5 == f.md5 && f.file.Name() == file.file.Name() {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *PNfs) addServer(server PServer) {
+	exist := false
+	for _, s := range p.servers {
+		if s.host == server.host && s.port == server.port {
+			exist = true
+			break
+		}
+	}
+
+	if !exist {
+		p.rwm.Lock()
+		defer p.rwm.Unlock()
+		p.servers = append(p.servers, server)
+	}
 }
 
 func (s *main.PServers) getRemoteFiles(host, api string) {

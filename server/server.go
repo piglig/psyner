@@ -32,19 +32,20 @@ type NfsServerFunc interface {
 }
 
 type PNfs struct {
-	servers      []*PServer
-	rwm          sync.RWMutex
-	fileToServer FileToServer
-	masterAddr   string
+	servers       []PServer
+	rwm           sync.RWMutex
+	files         []PFile
+	serverToFiles serverToFiles
+	masterAddr    string
 }
 
-type FileToServer map[string][]PFile
+type serverToFiles map[string][]PFile
 
 // New initial pnfs server
 func New(flag cli.PNFSFlag) (*PNfs, error) {
 	res := &PNfs{}
-	res.fileToServer = make(FileToServer)
-
+	res.files = make([]PFile, 0)
+	res.serverToFiles = make(serverToFiles)
 	host, port := flag.GetHostPort()
 	if flag.IsMaster() {
 		server := &PServer{
@@ -74,14 +75,14 @@ func New(flag cli.PNFSFlag) (*PNfs, error) {
 		return nil, err
 	}
 	server.files = files
-	res.fileToServer[net.JoinHostPort(host, strconv.Itoa(port))] = files
+	res.serverToFiles[net.JoinHostPort(host, strconv.Itoa(port))] = files
 	res.servers = append(res.servers, server)
 	return res, nil
 }
 
 type PServer struct {
 	host       string
-	port       int
+	port       string
 	active     bool
 	fsPath     string
 	isMaster   bool
