@@ -21,11 +21,12 @@ const (
 type Data struct {
 	Code int
 	Msg  string
+	Data interface{}
 }
 
-func result(w http.ResponseWriter, code int, msg string) {
-	data := Data{Code: code, Msg: msg}
-	dataBytes, _ := json.Marshal(&data)
+func result(w http.ResponseWriter, code int, msg string, data interface{}) {
+	res := Data{Code: code, Msg: msg, Data: data}
+	dataBytes, _ := json.Marshal(&res)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(dataBytes)
@@ -42,19 +43,19 @@ func (p *PServer) GetUnSyncedFileFromMaster(w http.ResponseWriter, r *http.Reque
 		resp, err := http.Get(fileURL)
 		if err != nil {
 			log.Println("GetUnSyncedFile", "err", err)
-			result(w, http.StatusInternalServerError, err.Error())
+			result(w, http.StatusInternalServerError, err.Error(), nil)
 			return
 		}
 		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			result(w, http.StatusInternalServerError, err.Error())
+			result(w, http.StatusInternalServerError, err.Error(), nil)
 			log.Fatal(err)
 		}
 		f := PFile{}
 		if err = json.Unmarshal(body, &f); err != nil {
 			log.Println("GetUnSyncedFile", "err", err)
-			result(w, http.StatusInternalServerError, err.Error())
+			result(w, http.StatusInternalServerError, err.Error(), nil)
 			return
 		}
 
@@ -72,7 +73,7 @@ func (p *PServer) GetUnSyncedFileFromMaster(w http.ResponseWriter, r *http.Reque
 			p.files = append(p.files, f)
 		}
 	}
-	result(w, http.StatusOK, http.StatusText(http.StatusOK))
+	result(w, http.StatusOK, http.StatusText(http.StatusOK), nil)
 }
 
 func GetHostPort(r *http.Request) (string, string) {
@@ -102,16 +103,45 @@ func (p *PNfs) GetUnSyncedFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if exist {
+		file := PFile{}
+		p.rwm.RLock()
+		defer p.rwm.RUnlock()
+		if len(p.files) == 0 {
+			result(w, http.StatusNotFound, http.StatusText(http.StatusNotFound), nil)
+			return
+		}
+
 		serverFiles := p.serverToFiles[net.JoinHostPort(host, port)]
 
+		for _, f := range p.files {
+			if !IsExistInFiles(f, serverFiles) {
+				file = f
+				res, _ := json.Marshal(file)
+				result(w, http.StatusOK, http.StatusText(http.StatusOK), res)
+				return
+			}
+		}
+		result(w, http.StatusNotFound, http.StatusText(http.StatusNotFound), nil)
+		return
 	} else {
 		server := p.GetServer(host, port)
 		p.addServer(server)
+		result(w, http.StatusNotFound, http.StatusText(http.StatusNotFound), nil)
+		return
 	}
 }
 
 func (p *PNfs) IsExistInFiles(f PFile) bool {
 	for _, file := range p.files {
+		if file.md5 == f.md5 && f.file.Name() == file.file.Name() {
+			return true
+		}
+	}
+	return false
+}
+
+func IsExistInFiles(file PFile, files []PFile) bool {
+	for _, f := range files {
 		if file.md5 == f.md5 && f.file.Name() == file.file.Name() {
 			return true
 		}
