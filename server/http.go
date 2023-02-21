@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"mime"
 	"net"
@@ -165,7 +164,7 @@ func (p *PNfs) addServer(server PServer) {
 	}
 }
 
-func (s *main.PServers) getRemoteFiles(host, api string) {
+func (s *PServers) getRemoteFiles(host, api string) {
 	addr := "http://" + host + api
 	resp, err := http.Get(addr)
 
@@ -181,7 +180,7 @@ func (s *main.PServers) getRemoteFiles(host, api string) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("%s getRemoteFiles read body err:%v", s.addr, err)
 		return
@@ -209,7 +208,7 @@ func (s *main.PServers) getRemoteFiles(host, api string) {
 	s.files[host] = serverFiles
 }
 
-func (s *main.PServers) UploadFileTo(writer http.ResponseWriter, request *http.Request) {
+func (s *PServers) UploadFileTo(writer http.ResponseWriter, request *http.Request) {
 	filename := request.URL.Query().Get("file")
 	if filename == "" {
 		//Get not set, send a 400 bad request
@@ -219,7 +218,6 @@ func (s *main.PServers) UploadFileTo(writer http.ResponseWriter, request *http.R
 	fmt.Println("Client requests: " + filename)
 
 	//Check if file exists and open
-	// Openfile, err := os.Open("files/" + Filename)
 	Openfile, err := os.Open(s.filePath + "/" + filename)
 	if err != nil {
 		//File not found, send 404
@@ -253,7 +251,7 @@ func (s *main.PServers) UploadFileTo(writer http.ResponseWriter, request *http.R
 }
 
 // DownloadFileFrom client for download file from remote server node
-func (s *main.PServers) DownloadFileFrom(host, api, filename string) {
+func (s *PServers) DownloadFileFrom(host, api, filename string) {
 	addr := "http://" + host + api
 	resp, err := http.Get(addr + "?file=" + filename)
 	fmt.Printf("%s requests download file[%s] from %s", s.addr, filename, addr)
@@ -312,7 +310,7 @@ type LocalFilesRes struct {
 	Files []string `json:"files"`
 }
 
-func (s *main.PServers) GetLocalFileList(w http.ResponseWriter, r *http.Request) {
+func (s *PServers) GetLocalFileList(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
