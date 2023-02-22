@@ -289,11 +289,9 @@ func (s *PServers) DownloadFileFrom(host, api, filename string) {
 	defer out.Close()
 
 	// try to save file three times
-	for i := 0; i < 3; i++ {
-		_, err = io.Copy(out, resp.Body)
-		if err == nil {
-			break
-		}
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return
 	}
 
 	s.mu.Lock()
