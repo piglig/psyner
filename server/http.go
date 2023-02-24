@@ -195,7 +195,7 @@ func (s *PServers) getRemoteFiles(host, api string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	serverFiles := map[string]main.PFile{}
+	serverFiles := map[string]PFile{}
 	// iterate the remote node file list
 	for _, file := range res.Files {
 		serverFile := main.PFile{}
