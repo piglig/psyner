@@ -51,8 +51,6 @@ func main() {
 				fileName := filepath.Base(event.Name)
 				log.Println(fileName)
 			}
-			//default:
-			//	log.Println("default")
 		}
 	}
 }
