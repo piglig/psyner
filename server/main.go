@@ -35,14 +35,19 @@ func main() {
 	defer listener.Close()
 
 	log.Printf("listening on %s......\n", listenAddr)
-	var m sync.Map
+	connPool := make(map[string]net.Conn)
+	connPoolLock := sync.Mutex{}
 	go func() {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
 				return
 			}
-			m.Store(conn.RemoteAddr().String(), conn)
+
+			// add connection to pool
+			connPoolLock.Lock()
+			connPool[conn.RemoteAddr().String()] = conn
+			connPoolLock.Unlock()
 			go connectionHandler(conn)
 		}
 	}()
@@ -55,9 +60,9 @@ func main() {
 
 				// transfer updated file to remote computers
 				fileName := filepath.Base(event.Name)
-				err := transferFile(fileName, dir, &connPool)
+				err := transferFile(fileName, dir, &connPool, &connPoolLock)
 				if err != nil {
-					fmt.Println(err)
+					log.Println(err)
 				}
 				log.Println(fileName)
 			}
@@ -91,7 +96,7 @@ func connectionHandler(conn net.Conn) {
 	}
 }
 
-func transferFile(fileName, folder string, connPool *sync.Map) error {
+func transferFile(fileName, folder string, connPool *map[string]net.Conn, connPoolLock *sync.Mutex) error {
 	filePath := filepath.Join(folder, fileName)
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -99,9 +104,16 @@ func transferFile(fileName, folder string, connPool *sync.Map) error {
 	}
 	defer file.Close()
 
+	// make a copy of the connection pool to avoid holding the lock for too long
+	connPoolLock.Lock()
+	poolCopy := make(map[string]net.Conn, len(*connPool))
+	for k, v := range *connPool {
+		poolCopy[k] = v
+	}
+	connPoolLock.Unlock()
 
 	// send file to each remote computer
-	for _, conn := range connPool. {
+	for _, conn := range poolCopy {
 		go func(conn net.Conn) {
 			defer conn.Close()
 
