@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// connect to server
-	conn, err := net.Dial("tcp", "localhost:8080")
+	conn, err := net.Dial("tcp", "localhost:7777")
 	if err != nil {
 		log.Fatal(err)
 	}

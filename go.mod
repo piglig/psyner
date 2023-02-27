@@ -1,4 +1,4 @@
-module pnfs
+module psyner
 
 go 1.15
 
