@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/gob"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -20,27 +20,23 @@ func main() {
 	}
 	defer conn.Close()
 
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	go func() {
+		// TODO periodically check if local directory is consistent with server
+		for range ticker.C {
+
+		}
+	}()
+
 	for {
 		// read available files from server
-		var files []string
-		err = gob.NewDecoder(conn).Decode(&files)
+		var fileName string
+		err = gob.NewDecoder(conn).Decode(&fileName)
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		fmt.Println("Available files:")
-		for _, file := range files {
-			fmt.Println(file)
-		}
-
-		// select file to synchronize
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Enter file to synchronize: ")
-		fileName, err := reader.ReadString('\n')
-		if err != nil {
-			log.Fatal(err)
-		}
-
 		fileName = strings.TrimSpace(fileName)
 
 		// send selected file name to server
