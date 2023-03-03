@@ -57,6 +57,8 @@ func main() {
 			if err != nil {
 				return
 			}
+
+			// TODO compare with server checksum, get not exist file from server
 		}
 	}()
 
