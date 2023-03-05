@@ -17,13 +17,13 @@ import (
 
 func main() {
 	// connect to server
-	conn, err := net.Dial("tcp", "localhost:7777")
+	conn, err := net.Dial("tcp", "host.docker.internal:7777")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
 
-	localDir := "./client/data"
+	localDir := "./data"
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
