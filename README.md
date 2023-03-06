@@ -1,4 +1,6 @@
 # PSyner
+[![Build Status](https://github.com/piglig/psyner/actions/workflows/docker-image.yml/badge.svg?branch=master)](https://github.com/piglig/psyner/actions/workflows/docker-image.yml?query=branch%3Amaster)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 A simple **continuous file synchronization program**. It's base tcp protocol between server and client.
 
