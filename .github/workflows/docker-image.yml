@@ -2,7 +2,7 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "dev" ]
   pull_request:
     branches: [ "master" ]
 
@@ -15,4 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build . --file ./server/Dockerfile --tag psyner-server:$(date +%s)
+      run: |
+        docker build . --file ./server/Dockerfile --tag psyner-server:$(date +%s)
+        docker build . --file ./client/Dockerfile --tag psyner-client:$(date +%s)
+
