@@ -1,10 +1,17 @@
 # PSyner
 
-Simple **continuous file synchronization program**. It's base tcp protocol between server and client.
+A simple **continuous file synchronization program**. It's base tcp protocol between server and client.
 
-## Requirements
+[//]: # (## Features)
 
-- Golang 1.18 or higher
+## Todo
+- [ ] Easy file synchronization
+- [ ] Secure TCP based on SSL/TLS
+- [ ] Slice-based big file transfer
+- [ ] Fixed window flow control
+- [ ] Ensuring file integrity through checksums
+- [ ] 
+- [ ] 
 
 ## Installation
 

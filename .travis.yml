@@ -1,0 +1,18 @@
+language: go
+
+services:
+  - docker
+
+go:
+  - master
+
+branches:
+  only:
+    - master
+    - dev
+
+script:
+  - docker build . --file ./server/Dockerfile --tag psyner-server:$(date +%s)
+
+notifications:
+  email: false
