@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	listenAddr = "localhost:7777"
+	listenAddr = "localhost:8888"
 	dir        = "./data"
 )
 

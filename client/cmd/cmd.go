@@ -42,9 +42,5 @@ func NewClient(config ClientConfig) (*Client, error) {
 }
 
 func (c *Client) Start() {
-	ticker := time.NewTicker(c.config.TickerInterval)
-	defer ticker.Stop()
-
-	go taskrun.CheckLocalDirChecksum(c.config.LocalDir, ticker)
-
+	go taskrun.CheckLocalDirChecksum(c.config.LocalDir, c.config.TickerInterval)
 }
