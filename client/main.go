@@ -6,61 +6,33 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"net"
 	"os"
-	"path/filepath"
+	"psyner/client/cmd"
 	"strings"
 	"time"
 )
 
 func main() {
 	// connect to server
-	conn, err := net.Dial("tcp", "host.docker.internal:7777")
+	// host.docker.internal
+	conn, err := net.Dial("tcp", ":8888")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
 
 	localDir := "./data"
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
-
-	//go func() {
-	// TODO periodically check if local directory is consistent with server
-	for range ticker.C {
-		checkSum := make(map[string]string)
-		err = filepath.Walk(localDir, func(path string, info fs.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-
-			if !info.Mode().IsRegular() {
-				return nil
-			}
-
-			checksum, err := generateChecksum(path)
-			if err != nil {
-				return err
-			}
-
-			relPath, err := filepath.Rel(localDir, path)
-			if err != nil {
-				return err
-			}
-			checkSum[relPath] = checksum
-			fmt.Printf("time:%v %s: %s\n", time.Now(), path, checksum)
-			return nil
-		})
-
-		if err != nil {
-			return
-		}
-
-		// TODO compare with server checksum, get not exist file from server
+	client, err := cmd.NewClient(cmd.ClientConfig{
+		LocalDir:       localDir,
+		TickerInterval: 10 * time.Second,
+	})
+	if err != nil {
+		log.Fatal("NewClient", err.Error())
 	}
-	//}()
+
+	client.Start()
 
 	fmt.Println("read file...")
 

@@ -10,38 +10,43 @@ import (
 	"time"
 )
 
-func CheckLocalDirChecksum(localDir string, ticker *time.Ticker) {
+func CheckLocalDirChecksum(localDir string, interval time.Duration) {
 	// TODO periodically check if local directory is consistent with server
-	for range ticker.C {
-		checkSum := make(map[string]string)
-		err := filepath.Walk(localDir, func(path string, info fs.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			checkSum := make(map[string]string)
+			err := filepath.Walk(localDir, func(path string, info fs.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
 
-			if !info.Mode().IsRegular() {
+				if !info.Mode().IsRegular() {
+					return nil
+				}
+
+				checksum, err := generateChecksum(path)
+				if err != nil {
+					return err
+				}
+
+				relPath, err := filepath.Rel(localDir, path)
+				if err != nil {
+					return err
+				}
+				checkSum[relPath] = checksum
+				fmt.Printf("time:%v %s: %s\n", time.Now(), path, checksum)
 				return nil
-			}
+			})
 
-			checksum, err := generateChecksum(path)
 			if err != nil {
-				return err
+				return
 			}
 
-			relPath, err := filepath.Rel(localDir, path)
-			if err != nil {
-				return err
-			}
-			checkSum[relPath] = checksum
-			fmt.Printf("time:%v %s: %s\n", time.Now(), path, checksum)
-			return nil
-		})
-
-		if err != nil {
-			return
+			// TODO compare with server checksum, get not exist file from server
 		}
-
-		// TODO compare with server checksum, get not exist file from server
 	}
 }
 
