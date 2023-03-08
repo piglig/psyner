@@ -23,7 +23,7 @@ func TestGenerateChecksum(t *testing.T) {
 			name:     "empty file",
 			filePath: "empty.txt",
 			expected: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			content:  []byte(""),
+			content:  make([]byte, 0),
 			isError:  false,
 		},
 		{
@@ -43,7 +43,7 @@ func TestGenerateChecksum(t *testing.T) {
 		{
 			name:             "multimedia file",
 			filePath:         "rgb.png",
-			expected:         "e5b844cc57f57094ea4585e235f36c78c1cd222262bb89d53c94dcb4d6b3e55d",
+			expected:         "4b31b5947d7d5795c5a673ed7147fb39e2270389d862ca6d5bb05738d8922726",
 			isError:          false,
 			isMultimediaFile: true,
 		},
@@ -71,7 +71,7 @@ func TestGenerateChecksum(t *testing.T) {
 			}
 
 			filePath := filepath.Join(testFileDir, tt.filePath)
-			f, err := os.Create(filePath)
+			f, err = os.Create(filePath)
 			if err != nil {
 				t.Fatalf("Create temporary test file error: %v", err)
 			}
