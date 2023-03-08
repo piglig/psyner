@@ -1,12 +1,10 @@
 package taskrun
 
 import (
-	"crypto/sha256"
 	"fmt"
-	"io"
 	"io/fs"
-	"os"
 	"path/filepath"
+	"psyner/common"
 	"time"
 )
 
@@ -27,7 +25,7 @@ func CheckLocalDirChecksum(localDir string, interval time.Duration) {
 					return nil
 				}
 
-				checksum, err := generateChecksum(path)
+				checksum, err := common.GenerateChecksum(path)
 				if err != nil {
 					return err
 				}
@@ -48,19 +46,4 @@ func CheckLocalDirChecksum(localDir string, interval time.Duration) {
 			// TODO compare with server checksum, get not exist file from server
 		}
 	}
-}
-
-func generateChecksum(filePath string) (string, error) {
-	// Generate the checksum for a file given its path
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, file); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
 }
