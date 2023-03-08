@@ -14,6 +14,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: Build
+      run: go build -v ./...
+    - name: Test
+      run: go test -v ./...
     - name: Build the Docker image
       run: |
         docker build . --file ./server/Dockerfile --tag psyner-server:$(date +%s)
