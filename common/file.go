@@ -1,10 +1,11 @@
 package common
 
-type FileSyncActionType int
+type FileSyncActionType string
 
 const (
-	GetFileSync FileSyncActionType = iota + 1
-	DeleteFileSync
+	GetFileSync    FileSyncActionType = "GET"
+	UpdateFileSync                    = "UPDATE"
+	DeleteFileSync                    = "DELETE"
 )
 
 type FileSyncProto struct {
