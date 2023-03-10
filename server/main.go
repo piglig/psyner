@@ -71,29 +71,33 @@ func main() {
 }
 
 func connectionHandler(conn net.Conn) {
-	defer conn.Close()
+	//defer conn.Close()
 	log.Printf("Accept connection from %s......\n", conn.RemoteAddr())
 
-	var fileName string
-	err := gob.NewDecoder(conn).Decode(&fileName)
-	if err != nil {
-		log.Println(err)
-		return
+	for {
+		data := make([]byte, 0)
+		err := gob.NewDecoder(conn).Decode(&data)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		fmt.Println("Received data:", string(data))
 	}
+	//
+	//fileName = filepath.Join(dir, fileName)
+	//file, err := os.Create(fileName)
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+	//defer file.Close()
+	//
+	//_, err = io.Copy(file, conn)
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
 
-	fileName = filepath.Join(dir, fileName)
-	file, err := os.Create(fileName)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer file.Close()
-
-	_, err = io.Copy(file, conn)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 }
 
 func transferFile(fileName, folder string, connPool *map[string]net.Conn, connPoolLock *sync.Mutex) error {
