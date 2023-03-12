@@ -8,20 +8,15 @@ const (
 	DeleteFileSync                    = "DELETE"
 )
 
-type FileSyncProto struct {
+type GetFileSyncPayload struct {
+	relPath string
+}
+
+type UpdateFileSyncPayload struct {
 	relPath  string
 	fileHash string
-	fileSize int64
 }
 
-func (p FileSyncProto) GetRelPath() string {
-	return p.relPath
-}
-
-func (p FileSyncProto) GetFileHash() string {
-	return p.fileHash
-}
-
-func (p FileSyncProto) GetFileSize() int64 {
-	return p.fileSize
+type DeleteFileSyncPayload struct {
+	relPath string
 }
