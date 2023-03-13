@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/gob"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
@@ -9,6 +10,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"psyner/common"
+	"psyner/server/taskrun/action"
+	_ "psyner/server/taskrun/action/event"
 	"sync"
 )
 
@@ -37,6 +41,8 @@ func main() {
 	log.Printf("listening on %s......\n", listenAddr)
 	connPool := make(map[string]net.Conn)
 	connPoolLock := sync.Mutex{}
+
+	closeCh := make(chan string)
 	go func() {
 		for {
 			conn, err := listener.Accept()
@@ -48,7 +54,7 @@ func main() {
 			connPoolLock.Lock()
 			connPool[conn.RemoteAddr().String()] = conn
 			connPoolLock.Unlock()
-			go connectionHandler(conn)
+			go connectionHandler(conn, closeCh)
 		}
 	}()
 
@@ -66,24 +72,36 @@ func main() {
 				}
 				log.Println(fileName)
 			}
+		case closeConn := <-closeCh:
+			connPoolLock.Lock()
+			delete(connPool, closeConn)
+			connPoolLock.Unlock()
+			log.Printf("Close connection %s......\n", closeConn)
 		}
 	}
 }
 
-func connectionHandler(conn net.Conn) {
-	//defer conn.Close()
+func connectionHandler(conn net.Conn, closeCh chan string) {
+	defer conn.Close()
 	log.Printf("Accept connection from %s......\n", conn.RemoteAddr())
-
+	payload := common.FileSyncPayload{}
+	decoder := gob.NewDecoder(conn)
 	for {
-		data := make([]byte, 0)
-		err := gob.NewDecoder(conn).Decode(&data)
+		err := decoder.Decode(&payload)
 		if err != nil {
-			log.Println(err)
-			return
+			log.Println("connectionHandler", err)
+			break
 		}
-		fmt.Println("Received data:", string(data))
+
+		log.Println("Received data:", payload.ActionType, string(payload.ActionPayload))
+		err = action.FileSyncAction(context.Background(), payload.ActionType, string(payload.ActionPayload))
+		if err != nil {
+			log.Printf("connectionHandler err:%s\n", err.Error())
+		}
 	}
-	//
+
+	closeCh <- conn.RemoteAddr().String()
+
 	//fileName = filepath.Join(dir, fileName)
 	//file, err := os.Create(fileName)
 	//if err != nil {

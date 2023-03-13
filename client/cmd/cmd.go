@@ -2,11 +2,14 @@ package cmd
 
 import (
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"psyner/client/taskrun"
+	"psyner/common"
 	"time"
 )
 
@@ -47,19 +50,38 @@ func NewClient(config ClientConfig) (*Client, error) {
 
 func (c *Client) Start() {
 	// connect to server
-	conn, err := net.Dial("tcp", ":8888")
+	conn, err := net.DialTimeout("tcp", ":8888", time.Second*10)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
 
+	err = conn.(*net.TCPConn).SetKeepAlive(true)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = conn.(*net.TCPConn).SetKeepAlivePeriod(10 * time.Second)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	go taskrun.CheckLocalDirChecksum(c.config.LocalDir, c.config.TickerInterval)
 
+	encoder := gob.NewEncoder(conn)
 	for {
 		// read available files from server
 		//var fileName string
-		data := []byte("hello")
-		err = gob.NewEncoder(conn).Encode(&data)
+		action := common.GetFileSyncPayload{
+			RelPath: filepath.Join(".", "data"),
+		}
+
+		actionPayload, _ := json.Marshal(action)
+		payload := common.FileSyncPayload{
+			ActionType:    common.GetFileSync,
+			ActionPayload: actionPayload,
+		}
+		err = encoder.Encode(&payload)
 		if err != nil {
 			log.Fatal(err)
 		}
