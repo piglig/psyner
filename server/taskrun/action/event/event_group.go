@@ -5,7 +5,7 @@ import (
 	"psyner/server/taskrun/action"
 )
 
-func Init() {
+func init() {
 	action.Register(common.GetFileSync, &GetFileExecutor{})
 	action.Register(common.UpdateFileSync, &UpdateFileExecutor{})
 	action.Register(common.DeleteFileSync, &DeleteFileExecutor{})

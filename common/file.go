@@ -8,15 +8,20 @@ const (
 	DeleteFileSync                    = "DELETE"
 )
 
+type FileSyncPayload struct {
+	ActionType    FileSyncActionType
+	ActionPayload []byte
+}
+
 type GetFileSyncPayload struct {
-	relPath string
+	RelPath string
 }
 
 type UpdateFileSyncPayload struct {
-	relPath  string
-	fileHash string
+	RelPath  string
+	FileHash string
 }
 
 type DeleteFileSyncPayload struct {
-	relPath string
+	RelPath string
 }
