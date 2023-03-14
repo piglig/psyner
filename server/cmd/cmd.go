@@ -54,7 +54,6 @@ func NewServer(config ServerConfig) (*Server, error) {
 }
 
 func (s *Server) checkLocalDirChecksum(interval time.Duration) {
-	// TODO periodically check if local directory is consistent with server
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -69,7 +68,7 @@ func (s *Server) checkLocalDirChecksum(interval time.Duration) {
 					return nil
 				}
 
-				checksum, err := common.GenerateChecksum(path)
+				calSum, err := common.GenerateChecksum(path)
 				if err != nil {
 					return err
 				}
@@ -78,18 +77,32 @@ func (s *Server) checkLocalDirChecksum(interval time.Duration) {
 				if err != nil {
 					return err
 				}
+
+				checkSum, ok := s.relPathCheckSum[relPath]
+				if ok && checkSum == calSum {
+					return nil
+				}
+
 				s.checkSumMux.Lock()
-				s.relPathCheckSum[relPath] = checksum
+				s.relPathCheckSum[relPath] = calSum
 				s.checkSumMux.Unlock()
-				fmt.Printf("time:%v %s: %s\n", time.Now(), path, checksum)
+				log.Printf("%s: %s\n", path, calSum)
 				return nil
 			})
 
 			if err != nil {
+				log.Println("checkLocalDirChecksum", "err", err.Error())
 				return
 			}
 		}
 	}
+}
+
+func (s *Server) CheckFileExist(path string) bool {
+	s.checkSumMux.RLock()
+	defer s.checkSumMux.RUnlock()
+	_, ex := s.relPathCheckSum[path]
+	return ex
 }
 
 func (s *Server) Run() {
@@ -109,6 +122,7 @@ func (s *Server) Run() {
 	}
 	defer listener.Close()
 
+	go s.checkLocalDirChecksum(5 * time.Second)
 	go s.connectionHandler(listener)
 
 	for {
@@ -116,7 +130,6 @@ func (s *Server) Run() {
 		case event := <-fw.Events:
 			if event.Has(fsnotify.Write) {
 				log.Printf("File %s modified\n", event.Name)
-
 				// transfer updated file to remote computers
 				fileName := filepath.Base(event.Name)
 				//err := transferFile(fileName, dir, &connPool, &connPoolLock)
@@ -125,11 +138,6 @@ func (s *Server) Run() {
 				//}
 				log.Println(fileName)
 			}
-			//case closeConn := <-s.closeCh:
-			//	s.connPoolMux.Lock()
-			//	delete(s.connPool, closeConn)
-			//	s.connPoolMux.Unlock()
-			//	log.Printf("Close connection %s......\n", closeConn)
 		}
 	}
 }
@@ -164,7 +172,9 @@ func (s *Server) connectionHandler(listener net.Listener) {
 				}
 
 				log.Println("Received data:", payload.ActionType, string(payload.ActionPayload))
-				err = action.FileSyncAction(context.Background(), payload.ActionType, string(payload.ActionPayload))
+				ctx := context.Background()
+				ctx = context.WithValue(ctx, "server", s)
+				err = action.FileSyncAction(ctx, payload.ActionType, conn, string(payload.ActionPayload))
 				if err != nil {
 					log.Printf("connectionHandler err:%s\n", err.Error())
 				}

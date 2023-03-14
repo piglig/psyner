@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
+	"net"
 	"psyner/common"
 	"sync"
 )
 
 type Executor interface {
-	Exec(ctx context.Context, command string) error
+	Exec(ctx context.Context, conn net.Conn, command string) error
+	Check(ctx context.Context, command string) error
 }
 
 var (
@@ -33,7 +35,7 @@ func Register(action common.FileSyncActionType, f Executor) {
 	}
 }
 
-func Exec(ctx context.Context, action common.FileSyncActionType, command string) (err error) {
+func Exec(ctx context.Context, action common.FileSyncActionType, conn net.Conn, command string) (err error) {
 	defer func() {
 		if panicErr := recover(); panicErr != nil {
 			err = errors.Errorf("panic in executor exec: %v", panicErr)
@@ -47,5 +49,10 @@ func Exec(ctx context.Context, action common.FileSyncActionType, command string)
 		return errors.Errorf("executor: unknow action %v", action)
 	}
 
-	return f.Exec(ctx, command)
+	err = f.Check(ctx, command)
+	if err != nil {
+		return err
+	}
+
+	return f.Exec(ctx, conn, command)
 }

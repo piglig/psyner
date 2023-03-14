@@ -73,7 +73,7 @@ func (c *Client) Start() {
 		// read available files from server
 		//var fileName string
 		action := common.GetFileSyncPayload{
-			RelPath: filepath.Join(".", "data"),
+			RelPath: filepath.Join(".", "a.log"),
 		}
 
 		actionPayload, _ := json.Marshal(action)

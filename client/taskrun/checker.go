@@ -1,8 +1,8 @@
 package taskrun
 
 import (
-	"fmt"
 	"io/fs"
+	"log"
 	"path/filepath"
 	"psyner/common"
 	"time"
@@ -15,7 +15,7 @@ func CheckLocalDirChecksum(localDir string, interval time.Duration) {
 	for {
 		select {
 		case <-ticker.C:
-			checkSum := make(map[string]string)
+			dirCheckSum := make(map[string]string)
 			err := filepath.Walk(localDir, func(path string, info fs.FileInfo, err error) error {
 				if err != nil {
 					return err
@@ -25,7 +25,7 @@ func CheckLocalDirChecksum(localDir string, interval time.Duration) {
 					return nil
 				}
 
-				checksum, err := common.GenerateChecksum(path)
+				calSum, err := common.GenerateChecksum(path)
 				if err != nil {
 					return err
 				}
@@ -34,8 +34,14 @@ func CheckLocalDirChecksum(localDir string, interval time.Duration) {
 				if err != nil {
 					return err
 				}
-				checkSum[relPath] = checksum
-				fmt.Printf("time:%v %s: %s\n", time.Now(), path, checksum)
+
+				checkSum, ok := dirCheckSum[relPath]
+				if ok && checkSum == calSum {
+					return nil
+				}
+
+				dirCheckSum[relPath] = calSum
+				log.Printf("%s: %s\n", path, calSum)
 				return nil
 			})
 
