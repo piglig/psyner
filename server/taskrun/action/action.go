@@ -9,7 +9,7 @@ import (
 )
 
 type Executor interface {
-	Exec(ctx context.Context, action common.FileSyncActionType, command string) error
+	Exec(ctx context.Context, command string) error
 }
 
 var (
@@ -47,5 +47,5 @@ func Exec(ctx context.Context, action common.FileSyncActionType, command string)
 		return errors.Errorf("executor: unknow action %v", action)
 	}
 
-	return f.Exec(ctx, action, command)
+	return f.Exec(ctx, command)
 }
