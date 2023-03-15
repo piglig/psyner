@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"psyner/server/cmd"
-	_ "psyner/server/taskrun/action/event"
 )
 
 const (

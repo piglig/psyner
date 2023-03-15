@@ -4,17 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/fsnotify/fsnotify"
+	"io"
 	"log"
 	"net"
+	"os"
 	"psyner/common"
-	"psyner/server/cmd"
-	"psyner/server/taskrun/action"
+	"psyner/server/taskrun/runner"
 )
 
+func init() {
+	runner.RegisterHandler(fsnotify.Create, &CreateFileHandler{})
+	runner.RegisterHandler(fsnotify.Write, &ModifyFileHandler{})
+}
+
 var (
-	_ action.Executor = (*GetFileExecutor)(nil)
-	_ action.Executor = (*UpdateFileExecutor)(nil)
-	_ action.Executor = (*DeleteFileExecutor)(nil)
+	_ runner.Executor = (*GetFileExecutor)(nil)
+	_ runner.Executor = (*UpdateFileExecutor)(nil)
+	_ runner.Executor = (*DeleteFileExecutor)(nil)
 )
 
 type GetFileExecutor struct {
@@ -30,15 +37,10 @@ func (e *GetFileExecutor) Check(ctx context.Context, command string) error {
 		return fmt.Errorf("GetFileExecutor invalid params:%v\n", p)
 	}
 
-	s, ok := ctx.Value("server").(*cmd.Server)
-	if !ok {
-		return fmt.Errorf("GetFileExecutor invalid context\n")
-	}
-
-	ex := s.CheckFileExist(p.RelPath)
+	//ex := ctx.CheckFileExist(p.RelPath)
 
 	//TODO implement me
-	log.Println("GetFileExecutor", "file_path", p.RelPath, "exist", ex)
+	log.Println("GetFileExecutor", "file_path", p.RelPath, "exist")
 	return nil
 }
 
@@ -65,8 +67,17 @@ func (*GetFileExecutor) Exec(ctx context.Context, conn net.Conn, command string)
 	if err := json.Unmarshal([]byte(command), &p); err != nil {
 		return err
 	}
+
+	f, err := os.Open(p.RelPath)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+	_, err = io.Copy(conn, f)
+
 	log.Println("GetFileExecutor from", conn.RemoteAddr())
-	return nil
+	return err
 }
 
 func (*UpdateFileExecutor) Exec(ctx context.Context, conn net.Conn, command string) error {

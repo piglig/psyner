@@ -12,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"psyner/common"
-	"psyner/server/taskrun/action"
+	"psyner/server/taskrun/runner"
 	"sync"
 	"time"
 )
@@ -98,13 +98,6 @@ func (s *Server) checkLocalDirChecksum(interval time.Duration) {
 	}
 }
 
-func (s *Server) CheckFileExist(path string) bool {
-	s.checkSumMux.RLock()
-	defer s.checkSumMux.RUnlock()
-	_, ex := s.relPathCheckSum[path]
-	return ex
-}
-
 func (s *Server) Run() {
 	fw, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -138,6 +131,11 @@ func (s *Server) Run() {
 				//}
 				log.Println(fileName)
 			}
+		case err, ok := <-fw.Errors:
+			if !ok {
+				return
+			}
+			log.Println("fw error", err.Error())
 		}
 	}
 }
@@ -172,9 +170,8 @@ func (s *Server) connectionHandler(listener net.Listener) {
 				}
 
 				log.Println("Received data:", payload.ActionType, string(payload.ActionPayload))
-				ctx := context.Background()
-				ctx = context.WithValue(ctx, "server", s)
-				err = action.FileSyncAction(ctx, payload.ActionType, conn, string(payload.ActionPayload))
+
+				err = FileSyncAction(context.Background(), payload.ActionType, conn, string(payload.ActionPayload))
 				if err != nil {
 					log.Printf("connectionHandler err:%s\n", err.Error())
 				}
@@ -182,6 +179,17 @@ func (s *Server) connectionHandler(listener net.Listener) {
 
 		}(conn)
 	}
+}
+
+func (s *Server) CheckFileExist(path string) bool {
+	s.checkSumMux.RLock()
+	defer s.checkSumMux.RUnlock()
+	_, ex := s.relPathCheckSum[path]
+	return ex
+}
+
+func FileSyncAction(ctx context.Context, action common.FileSyncActionType, conn net.Conn, command string) error {
+	return runner.Exec(ctx, action, conn, command)
 }
 
 func transferFile(fileName, folder string, connPool *map[string]net.Conn, connPoolLock *sync.Mutex) error {
@@ -226,4 +234,17 @@ func transferFile(fileName, folder string, connPool *map[string]net.Conn, connPo
 	}
 
 	return nil
+}
+
+func (s *Server) broadcastAction() {
+	s.connPoolMux.Lock()
+	poolCopy := make(map[string]net.Conn, len(s.connPool))
+	for k, v := range s.connPool {
+		poolCopy[k] = v
+	}
+	s.connPoolMux.Unlock()
+
+	//for _, conn := range poolCopy {
+	//
+	//}
 }

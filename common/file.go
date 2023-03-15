@@ -25,3 +25,9 @@ type UpdateFileSyncPayload struct {
 type DeleteFileSyncPayload struct {
 	RelPath string
 }
+
+type FsWatcherCreateFilePayload struct {
+	FileName string
+	RelPath  string
+	MD5      string
+}
