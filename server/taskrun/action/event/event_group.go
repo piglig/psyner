@@ -6,7 +6,8 @@ import (
 )
 
 func init() {
-	action.Register(common.GetFileSync, &GetFileExecutor{})
-	action.Register(common.UpdateFileSync, &UpdateFileExecutor{})
-	action.Register(common.DeleteFileSync, &DeleteFileExecutor{})
+	action.RegisterExecutor(common.GetFileSync, &GetFileExecutor{})
+	action.RegisterExecutor(common.UpdateFileSync, &UpdateFileExecutor{})
+	action.RegisterExecutor(common.DeleteFileSync, &DeleteFileExecutor{})
+
 }

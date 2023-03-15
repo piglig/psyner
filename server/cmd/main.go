@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"psyner/server/cmd"
+	"psyner/server/ctx"
 	_ "psyner/server/taskrun/action/event"
 )
 
@@ -12,7 +12,7 @@ const (
 )
 
 func main() {
-	server, err := cmd.NewServer(cmd.ServerConfig{
+	server, err := ctx.NewServer(ctx.ServerConfig{
 		// host.docker.internal
 		ListenAddr: listenAddr,
 		LocalDir:   dir,

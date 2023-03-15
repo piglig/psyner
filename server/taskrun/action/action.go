@@ -1,25 +1,32 @@
 package action
 
 import (
-	"context"
 	"fmt"
-	"github.com/pkg/errors"
+	"github.com/fsnotify/fsnotify"
 	"net"
 	"psyner/common"
+	"psyner/server/ctx"
 	"sync"
 )
-
-type Executor interface {
-	Exec(ctx context.Context, conn net.Conn, command string) error
-	Check(ctx context.Context, command string) error
-}
 
 var (
 	executorMu sync.RWMutex
 	executors  = make(map[common.FileSyncActionType]Executor)
+
+	handlerMu sync.RWMutex
+	handlers  = make(map[fsnotify.Op]Handler)
 )
 
-func Register(action common.FileSyncActionType, f Executor) {
+type Executor interface {
+	Exec(ctx ctx.Context, conn net.Conn, command string) error
+	Check(ctx ctx.Context, command string) error
+}
+
+type Handler interface {
+	Do(event fsnotify.Event) ([]byte, error)
+}
+
+func RegisterExecutor(action common.FileSyncActionType, f Executor) {
 	executorMu.Lock()
 	defer executorMu.Unlock()
 
@@ -35,24 +42,18 @@ func Register(action common.FileSyncActionType, f Executor) {
 	}
 }
 
-func Exec(ctx context.Context, action common.FileSyncActionType, conn net.Conn, command string) (err error) {
-	defer func() {
-		if panicErr := recover(); panicErr != nil {
-			err = errors.Errorf("panic in executor exec: %v", panicErr)
-		}
-	}()
+func RegisterHandler(op fsnotify.Op, f Handler) {
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
 
-	executorMu.RLock()
-	defer executorMu.RUnlock()
-	f, ok := executors[action]
+	if f == nil {
+		panic("executor: Register executor is nil")
+	}
+
+	_, ok := handlers[op]
 	if !ok {
-		return errors.Errorf("executor: unknow action %v", action)
+		handlers[op] = f
+	} else {
+		panic(fmt.Sprintf("executor: Register called twice for %v", op))
 	}
-
-	err = f.Check(ctx, command)
-	if err != nil {
-		return err
-	}
-
-	return f.Exec(ctx, conn, command)
 }
