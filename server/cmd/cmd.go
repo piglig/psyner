@@ -1,4 +1,4 @@
-package runner
+package cmd
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"psyner/common"
+	"psyner/server/taskrun/runner"
 	"sync"
 	"time"
 )
@@ -188,7 +189,7 @@ func (s *Server) CheckFileExist(path string) bool {
 }
 
 func FileSyncAction(ctx context.Context, action common.FileSyncActionType, conn net.Conn, command string) error {
-	return Exec(ctx, action, conn, command)
+	return runner.Exec(ctx, action, conn, command)
 }
 
 func transferFile(fileName, folder string, connPool *map[string]net.Conn, connPoolLock *sync.Mutex) error {
