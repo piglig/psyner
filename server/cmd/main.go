@@ -2,8 +2,7 @@ package main
 
 import (
 	"log"
-	"psyner/server/ctx"
-	_ "psyner/server/taskrun/action/event"
+	"psyner/server/taskrun/runner"
 )
 
 const (
@@ -12,7 +11,7 @@ const (
 )
 
 func main() {
-	server, err := ctx.NewServer(ctx.ServerConfig{
+	server, err := runner.NewServer(runner.ServerConfig{
 		// host.docker.internal
 		ListenAddr: listenAddr,
 		LocalDir:   dir,

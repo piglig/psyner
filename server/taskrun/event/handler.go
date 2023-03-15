@@ -1,14 +1,22 @@
-package handler
+package event
 
 import (
 	"github.com/fsnotify/fsnotify"
-	"psyner/server/taskrun/action"
+	"psyner/common"
+	"psyner/server/taskrun/runner"
 )
 
 var (
-	_ action.Handler = (*DeleteFileHandler)(nil)
-	_ action.Handler = (*ModifyFileHandler)(nil)
+	_ runner.Handler = (*DeleteFileHandler)(nil)
+	_ runner.Handler = (*ModifyFileHandler)(nil)
 )
+
+func init() {
+	runner.RegisterExecutor(common.GetFileSync, &GetFileExecutor{})
+	runner.RegisterExecutor(common.UpdateFileSync, &UpdateFileExecutor{})
+	runner.RegisterExecutor(common.DeleteFileSync, &DeleteFileExecutor{})
+
+}
 
 type ModifyFileHandler struct {
 }

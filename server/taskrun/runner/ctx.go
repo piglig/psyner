@@ -1,11 +1,10 @@
-package ctx
+package runner
 
 import (
 	"context"
 	"encoding/gob"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
-	"github.com/pkg/errors"
 	"io"
 	"io/fs"
 	"log"
@@ -16,11 +15,6 @@ import (
 	"sync"
 	"time"
 )
-
-type Context struct {
-	Context context.Context
-	*Server
-}
 
 type Server struct {
 	checkSumMux     sync.RWMutex
@@ -175,11 +169,8 @@ func (s *Server) connectionHandler(listener net.Listener) {
 				}
 
 				log.Println("Received data:", payload.ActionType, string(payload.ActionPayload))
-				ctx := Context{
-					Context: context.Background(),
-					Server:  s,
-				}
-				err = FileSyncAction(ctx, payload.ActionType, conn, string(payload.ActionPayload))
+
+				err = FileSyncAction(context.Background(), payload.ActionType, conn, string(payload.ActionPayload))
 				if err != nil {
 					log.Printf("connectionHandler err:%s\n", err.Error())
 				}
@@ -189,60 +180,15 @@ func (s *Server) connectionHandler(listener net.Listener) {
 	}
 }
 
-func FileSyncAction(ctx Context, action common.FileSyncActionType, conn net.Conn, command string) error {
-	return Exec(ctx, action, conn, command)
-}
-
-func Do(ctx context.Context, op fsnotify.Op, conn net.Conn, event fsnotify.Event) (err error) {
-	defer func() {
-		if panicErr := recover(); panicErr != nil {
-			err = errors.Errorf("panic in handler err: %v", panicErr)
-		}
-	}()
-
-	handlerMu.RLock()
-	defer handlerMu.RUnlock()
-	f, ok := handlers[op]
-	if !ok {
-		return errors.Errorf("handler: unknow operate %v", op)
-	}
-
-	res, err := f.Do(event)
-	if err != nil {
-		return err
-	}
-
-	_ = res
-	return
-}
-
-func Exec(ctx Context, action common.FileSyncActionType, conn net.Conn, command string) (err error) {
-	defer func() {
-		if panicErr := recover(); panicErr != nil {
-			err = errors.Errorf("panic in executor exec: %v", panicErr)
-		}
-	}()
-
-	executorMu.RLock()
-	defer executorMu.RUnlock()
-	f, ok := executors[action]
-	if !ok {
-		return errors.Errorf("executor: unknow action %v", action)
-	}
-
-	err = f.Check(ctx, command)
-	if err != nil {
-		return err
-	}
-
-	return f.Exec(ctx, conn, command)
-}
-
 func (s *Server) CheckFileExist(path string) bool {
 	s.checkSumMux.RLock()
 	defer s.checkSumMux.RUnlock()
 	_, ex := s.relPathCheckSum[path]
 	return ex
+}
+
+func FileSyncAction(ctx context.Context, action common.FileSyncActionType, conn net.Conn, command string) error {
+	return Exec(ctx, action, conn, command)
 }
 
 func transferFile(fileName, folder string, connPool *map[string]net.Conn, connPoolLock *sync.Mutex) error {
