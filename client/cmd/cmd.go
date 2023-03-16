@@ -85,24 +85,6 @@ func (c *Client) Start() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		//fileName = strings.TrimSpace(fileName)
-
-		// send selected file name to server
-
-		// receive file data from server
-		//fileData := bytes.Buffer{}
-		//_, err = io.Copy(&fileData, conn)
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
-
-		// save file to local computer
-		//err = os.WriteFile(fileName, fileData.Bytes(), 0644)
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
-		//
-		//fmt.Printf("Saved file %s\n", fileName)
 
 		time.Sleep(1 * time.Second)
 	}
