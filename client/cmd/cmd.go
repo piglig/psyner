@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -68,24 +69,75 @@ func (c *Client) Start() {
 
 	go taskrun.CheckLocalDirChecksum(c.config.LocalDir, c.config.TickerInterval)
 
-	encoder := gob.NewEncoder(conn)
-	for {
-		// read available files from server
-		//var fileName string
-		action := common.GetFileSyncPayload{
-			RelPath: filepath.Join(".", "a.log"),
-		}
+	done := make(chan struct{})
+	go func() {
+		encoder := gob.NewEncoder(conn)
+		for {
+			// read available files from server
+			//var fileName string
+			action := common.GetFileSyncPayload{
+				RelPath: filepath.Join(".", "a.log"),
+			}
 
-		actionPayload, _ := json.Marshal(action)
-		payload := common.FileSyncPayload{
-			ActionType:    common.GetFileSync,
-			ActionPayload: actionPayload,
-		}
-		err = encoder.Encode(&payload)
-		if err != nil {
-			log.Fatal(err)
-		}
+			actionPayload, _ := json.Marshal(action)
+			payload := common.FileSyncPayload{
+				ActionType:    common.GetFileSync,
+				ActionPayload: actionPayload,
+			}
+			err = encoder.Encode(&payload)
+			if err != nil {
+				log.Fatal(err)
+			}
+			//fileName = strings.TrimSpace(fileName)
 
-		time.Sleep(1 * time.Second)
-	}
+			// send selected file name to server
+
+			// receive file data from server
+			//fileData := bytes.Buffer{}
+			//_, err = io.Copy(&fileData, conn)
+			//if err != nil {
+			//	log.Fatal(err)
+			//}
+
+			// save file to local computer
+			//err = os.WriteFile(fileName, fileData.Bytes(), 0644)
+			//if err != nil {
+			//	log.Fatal(err)
+			//}
+			//
+			//fmt.Printf("Saved file %s\n", fileName)
+
+			return
+		}
+	}()
+
+	go func() {
+		decoder := gob.NewDecoder(conn)
+		for {
+			res := common.GetFileSyncPayloadRes{}
+			err := decoder.Decode(&res)
+			if err != nil {
+				log.Println("Decode", "err", err)
+				return
+			}
+
+			localPath := filepath.Join(c.config.LocalDir, res.RelPath)
+			file, err := os.Create(localPath)
+			if err != nil {
+				log.Println("Create", "err", err)
+				return
+			}
+			defer file.Close()
+
+			_, err = io.Copy(file, conn)
+			if err != nil {
+				log.Println("Copy", "err", err)
+				return
+			}
+
+			log.Println("Client received file", res.RelPath)
+		}
+	}()
+
+	<-done
 }

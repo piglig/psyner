@@ -8,6 +8,10 @@ const (
 	DeleteFileSync                    = "DELETE"
 )
 
+const (
+	BufferSize = 1024
+)
+
 type FileSyncPayload struct {
 	ActionType    FileSyncActionType
 	ActionPayload []byte
@@ -15,6 +19,11 @@ type FileSyncPayload struct {
 
 type GetFileSyncPayload struct {
 	RelPath string
+}
+
+type GetFileSyncPayloadRes struct {
+	RelPath  string
+	FileSize int64
 }
 
 type UpdateFileSyncPayload struct {

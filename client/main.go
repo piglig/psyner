@@ -10,7 +10,7 @@ func main() {
 	client, err := cmd.NewClient(cmd.ClientConfig{
 		// host.docker.internal
 		ServerAddr:     ":8888",
-		LocalDir:       "./data",
+		LocalDir:       "./client/data",
 		TickerInterval: 10 * time.Second,
 	})
 	if err != nil {

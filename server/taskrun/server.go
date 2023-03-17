@@ -1,4 +1,4 @@
-package cmd
+package taskrun
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"psyner/common"
-	"psyner/server/taskrun/runner"
 	"sync"
 	"time"
 )
@@ -23,12 +22,16 @@ type Server struct {
 	relPathCheckSum map[string]string
 	config          ServerConfig
 	connPool        map[string]net.Conn
-	closeCh         chan string
 }
 
 type ServerConfig struct {
 	ListenAddr string
 	LocalDir   string
+}
+
+type Context struct {
+	*Server
+	context.Context
 }
 
 func NewServer(config ServerConfig) (*Server, error) {
@@ -46,7 +49,6 @@ func NewServer(config ServerConfig) (*Server, error) {
 	}
 
 	return &Server{
-		closeCh:         make(chan string),
 		connPool:        make(map[string]net.Conn),
 		relPathCheckSum: make(map[string]string),
 		config:          config,
@@ -170,8 +172,11 @@ func (s *Server) connectionHandler(listener net.Listener) {
 				}
 
 				log.Println("Received data:", payload.ActionType, string(payload.ActionPayload))
-
-				err = FileSyncAction(context.Background(), payload.ActionType, conn, string(payload.ActionPayload))
+				ctx := Context{
+					Server:  s,
+					Context: context.Background(),
+				}
+				err = FileSyncAction(ctx, payload.ActionType, conn, string(payload.ActionPayload))
 				if err != nil {
 					log.Printf("connectionHandler err:%s\n", err.Error())
 				}
@@ -188,8 +193,12 @@ func (s *Server) CheckFileExist(path string) bool {
 	return ex
 }
 
-func FileSyncAction(ctx context.Context, action common.FileSyncActionType, conn net.Conn, command string) error {
-	return runner.Exec(ctx, action, conn, command)
+func (s *Server) getFilePath(path string) string {
+	return filepath.Join(s.config.LocalDir, path)
+}
+
+func FileSyncAction(ctx Context, action common.FileSyncActionType, conn net.Conn, command string) error {
+	return Exec(ctx, action, conn, command)
 }
 
 func transferFile(fileName, folder string, connPool *map[string]net.Conn, connPoolLock *sync.Mutex) error {

@@ -30,17 +30,12 @@ func CheckLocalDirChecksum(localDir string, interval time.Duration) {
 					return err
 				}
 
-				relPath, err := filepath.Rel(localDir, path)
-				if err != nil {
-					return err
-				}
-
-				checkSum, ok := dirCheckSum[relPath]
+				checkSum, ok := dirCheckSum[path]
 				if ok && checkSum == calSum {
 					return nil
 				}
 
-				dirCheckSum[relPath] = calSum
+				dirCheckSum[path] = calSum
 				log.Printf("%s: %s\n", path, calSum)
 				return nil
 			})
