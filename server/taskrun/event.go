@@ -78,12 +78,13 @@ func (*GetFileExecutor) Exec(ctx Context, conn net.Conn, command string) error {
 	if err != nil {
 		return err
 	}
-	fInfo, err := f.Stat()
-	if err != nil {
-		return err
-	}
 	defer f.Close()
-	res := common.GetFileSyncPayloadRes{RelPath: p.RelPath, FileSize: fInfo.Size()}
+
+	//fInfo, err := f.Stat()
+	//if err != nil {
+	//	return err
+	//}
+	res := common.GetFileSyncPayloadRes{RelPath: p.RelPath, FileSize: 0}
 	err = encoder.Encode(&res)
 	if err != nil {
 		return err
@@ -93,6 +94,8 @@ func (*GetFileExecutor) Exec(ctx Context, conn net.Conn, command string) error {
 	if err != nil {
 		return err
 	}
+
+	//conn.Close()
 
 	log.Println("GetFileExecutor from", conn.RemoteAddr())
 	return err
