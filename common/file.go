@@ -1,17 +1,18 @@
 package common
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
 )
 
-type FileSyncActionType string
+type FileSyncActionType uint32
 
 const (
-	GetFileSync    FileSyncActionType = "GET"
-	UpdateFileSync                    = "UPDATE"
-	DeleteFileSync                    = "DELETE"
+	GetFileSync FileSyncActionType = iota + 1
+	UpdateFileSync
+	DeleteFileSync
 )
 
 const (
@@ -28,19 +29,52 @@ func (f FileSyncPayload) Byte() []byte {
 	return bs
 }
 
-func (f *FileSyncPayload) WriteTo(w io.Writer) (n int64, err error) {
-	//TODO implement me
-	panic("implement me")
+func (f FileSyncPayload) WriteTo(w io.Writer) (n int64, err error) {
+	err = binary.Write(w, binary.BigEndian, f.ActionType)
+	if err != nil {
+		return 0, err
+	}
+
+	n = 4
+	err = binary.Write(w, binary.BigEndian, uint32(len(f.ActionPayload)))
+	if err != nil {
+		return 0, err
+	}
+	n += 4
+	o, err := w.Write(f.ActionPayload)
+	if err != nil {
+		return 0, err
+	}
+
+	return n + int64(o), err
 }
 
 func (f *FileSyncPayload) ReadFrom(r io.Reader) (n int64, err error) {
-	//TODO implement me
-	panic("implement me")
+	err = binary.Read(r, binary.BigEndian, f.ActionType)
+	if err != nil {
+		return 0, err
+	}
+
+	n = 4
+	var size uint32
+	err = binary.Read(r, binary.BigEndian, &size)
+	if err != nil {
+		return 0, err
+	}
+	n += 4
+
+	buf := make([]byte, size)
+	o, err := r.Read(buf)
+	if err != nil {
+		return 0, err
+	}
+
+	f.ActionPayload = buf
+	return n + int64(o), nil
 }
 
-func (f *FileSyncPayload) String() string {
-	//TODO implement me
-	panic("implement me")
+func (f FileSyncPayload) String() string {
+	return string(f.Byte())
 }
 
 type GetFileSyncPayload struct {
