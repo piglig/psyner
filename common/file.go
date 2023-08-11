@@ -1,84 +1,136 @@
 package common
 
 import (
+	"bytes"
 	"encoding/binary"
-	"encoding/json"
-	"fmt"
 	"io"
+	"strings"
+	"errors"
 )
 
-type FileSyncActionType uint32
+type FileSyncOp uint32
 
 const (
-	GetFileSync FileSyncActionType = iota + 1
-	UpdateFileSync
-	DeleteFileSync
+	GetFileOp FileSyncOp = iota + 1
+	UpdateFileOp
+	DeleteFileOp
+	DataOp
 )
 
 const (
-	BufferSize = 1024
+	DataBufferSize = 1020
+	BlockSize      = DataBufferSize - 8
 )
 
 type FileSyncPayload struct {
-	ActionType    FileSyncActionType
+	OpType        FileSyncOp
 	ActionPayload []byte
 }
 
-func (f FileSyncPayload) Byte() []byte {
-	bs, _ := json.Marshal(f)
-	return bs
-}
-
-func (f FileSyncPayload) WriteTo(w io.Writer) (n int64, err error) {
-	err = binary.Write(w, binary.BigEndian, f.ActionType)
-	if err != nil {
-		return 0, err
-	}
-
-	n = 4
-	err = binary.Write(w, binary.BigEndian, uint32(len(f.ActionPayload)))
-	if err != nil {
-		return 0, err
-	}
-	n += 4
-	o, err := w.Write(f.ActionPayload)
-	if err != nil {
-		return 0, err
-	}
-
-	return n + int64(o), err
-}
-
-func (f *FileSyncPayload) ReadFrom(r io.Reader) (n int64, err error) {
-	err = binary.Read(r, binary.BigEndian, f.ActionType)
-	if err != nil {
-		return 0, err
-	}
-
-	n = 4
-	var size uint32
-	err = binary.Read(r, binary.BigEndian, &size)
-	if err != nil {
-		return 0, err
-	}
-	n += 4
-
-	buf := make([]byte, size)
-	o, err := r.Read(buf)
-	if err != nil {
-		return 0, err
-	}
-
-	f.ActionPayload = buf
-	return n + int64(o), nil
-}
-
-func (f FileSyncPayload) String() string {
-	return string(f.Byte())
-}
-
-type GetFileSyncPayload struct {
+type GetFileOpPayload struct {
 	RelPath string
+}
+
+func (d *GetFileOpPayload) MarshalBinary() ([]byte, error) {
+	if d.RelPath == "" {
+		return nil, errors.New("invalid path")
+	}
+
+	c := 4 + len(d.RelPath) + 1
+
+	b := new(bytes.Buffer)
+	b.Grow(c)
+
+	err := binary.Write(b, binary.BigEndian, GetFileOp)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = b.WriteString(d.RelPath)
+	if err != nil {
+		return nil, err
+	}
+
+	err = b.WriteByte(0)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.Bytes(), nil
+}
+
+func (d *GetFileOpPayload) UnmarshalBinary(p []byte) error {
+	if l := len(p); l < 5 || l > DataBufferSize {
+		return errors.New("invalid GetFileOp len")
+	}
+
+	r := bytes.NewBuffer(p)
+
+	var op FileSyncOp
+	err := binary.Read(r, binary.BigEndian, &op)
+	if err != nil {
+		return err
+	}
+
+	if op != GetFileOp {
+		return errors.New("invalid GetFileOp")
+	}
+
+	fileName, err := r.ReadString(0)
+	if err != nil {
+		return err
+	}
+
+	d.RelPath = strings.TrimRight(fileName, "\x00")
+	return nil
+}
+
+type DataPayload struct {
+	Block   uint32
+	Payload io.Reader
+}
+
+func (d *DataPayload) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	b.Grow(DataBufferSize)
+
+	d.Block++
+
+	err := binary.Write(b, binary.BigEndian, DataOp)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = io.CopyN(b, d.Payload, BlockSize)
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	return b.Bytes(), nil
+}
+
+func (d *DataPayload) UnmarshalBinary(p []byte) error {
+	if l := len(p); l < 8 || l > DataBufferSize {
+		return errors.New("invalid Data")
+	}
+
+	var op FileSyncOp
+	err := binary.Read(bytes.NewReader(p[:4]), binary.BigEndian, &op)
+	if err != nil {
+		return err
+	}
+
+	if op != DataOp {
+		return errors.New("invalid DATA")
+	}
+
+	err = binary.Read(bytes.NewReader(p[4:8]), binary.BigEndian, &d.Block)
+	if err != nil {
+		return err
+	}
+
+	d.Payload = bytes.NewBuffer(p[8:])
+	return nil
 }
 
 type GetFileSyncPayloadRes struct {
@@ -99,11 +151,4 @@ type FsWatcherCreateFilePayload struct {
 	FileName string
 	RelPath  string
 	MD5      string
-}
-
-type FileCommandPayload interface {
-	Byte() []byte
-	io.WriterTo
-	io.ReaderFrom
-	fmt.Stringer
 }

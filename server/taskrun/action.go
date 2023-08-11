@@ -12,7 +12,6 @@ import (
 
 type Executor interface {
 	Exec(ctx Context, conn net.Conn, command string) error
-	Check(ctx Context, command string) error
 }
 
 type Handler interface {
@@ -21,13 +20,13 @@ type Handler interface {
 
 var (
 	executorMu sync.RWMutex
-	executors  = make(map[common.FileSyncActionType]Executor)
+	executors  = make(map[common.FileSyncOp]Executor)
 
 	handlerMu sync.RWMutex
 	handlers  = make(map[fsnotify.Op]Handler)
 )
 
-func RegisterExecutor(action common.FileSyncActionType, f Executor) {
+func RegisterExecutor(action common.FileSyncOp, f Executor) {
 	executorMu.Lock()
 	defer executorMu.Unlock()
 
@@ -59,7 +58,7 @@ func RegisterHandler(op fsnotify.Op, f Handler) {
 	}
 }
 
-func GetExecutor(action common.FileSyncActionType) (Executor, error) {
+func GetExecutor(action common.FileSyncOp) (Executor, error) {
 	defer func() {
 		if panicErr := recover(); panicErr != nil {
 			log.Printf("panic in executor exec: %v\n", panicErr)
@@ -104,13 +103,8 @@ func Do(ctx Context, op fsnotify.Op, conn net.Conn, event fsnotify.Event) (err e
 	return
 }
 
-func Exec(ctx Context, act common.FileSyncActionType, conn net.Conn, command string) (err error) {
+func Exec(ctx Context, act common.FileSyncOp, conn net.Conn, command string) (err error) {
 	f, err := GetExecutor(act)
-	if err != nil {
-		return err
-	}
-
-	err = f.Check(ctx, command)
 	if err != nil {
 		return err
 	}

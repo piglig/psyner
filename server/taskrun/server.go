@@ -171,15 +171,15 @@ func (s *Server) connectionHandler(listener net.Listener) {
 					break
 				}
 
-				log.Println("Received data:", payload.ActionType, string(payload.ActionPayload))
-				ctx := Context{
-					Server:  s,
-					Context: context.Background(),
-				}
-				err = FileSyncAction(ctx, payload.ActionType, conn, string(payload.ActionPayload))
-				if err != nil {
-					log.Printf("connectionHandler err:%s\n", err.Error())
-				}
+				//log.Println("Received data:", payload.ActionType, string(payload.ActionPayload))
+				//ctx := Context{
+				//	Server:  s,
+				//	Context: context.Background(),
+				//}
+				//err = FileSyncAction(ctx, payload.ActionType, conn, string(payload.ActionPayload))
+				//if err != nil {
+				//	log.Printf("connectionHandler err:%s\n", err.Error())
+				//}
 			}
 
 		}(conn)
@@ -197,7 +197,7 @@ func (s *Server) getFilePath(path string) string {
 	return filepath.Join(s.config.LocalDir, path)
 }
 
-func FileSyncAction(ctx Context, action common.FileSyncActionType, conn net.Conn, command string) error {
+func FileSyncAction(ctx Context, action common.FileSyncOp, conn net.Conn, command string) error {
 	return Exec(ctx, action, conn, command)
 }
 

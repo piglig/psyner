@@ -11,9 +11,9 @@ var (
 )
 
 func init() {
-	RegisterExecutor(common.GetFileSync, &GetFileExecutor{})
-	RegisterExecutor(common.UpdateFileSync, &UpdateFileExecutor{})
-	RegisterExecutor(common.DeleteFileSync, &DeleteFileExecutor{})
+	RegisterExecutor(common.GetFileOp, &GetFileExecutor{})
+	RegisterExecutor(common.UpdateFileOp, &UpdateFileExecutor{})
+	RegisterExecutor(common.DeleteFileOp, &DeleteFileExecutor{})
 
 }
 

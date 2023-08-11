@@ -75,13 +75,13 @@ func (c *Client) Start() {
 		for {
 			// read available files from server
 			//var fileName string
-			action := common.GetFileSyncPayload{
+			action := common.GetFileOpPayload{
 				RelPath: filepath.Join(".", "a.log"),
 			}
 
 			actionPayload, _ := json.Marshal(action)
 			payload := common.FileSyncPayload{
-				ActionType:    common.GetFileSync,
+				OpType:        common.GetFileOp,
 				ActionPayload: actionPayload,
 			}
 			err = encoder.Encode(&payload)

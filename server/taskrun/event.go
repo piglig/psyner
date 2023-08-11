@@ -3,7 +3,6 @@ package taskrun
 import (
 	"encoding/gob"
 	"encoding/json"
-	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"io"
 	"log"
@@ -26,47 +25,14 @@ var (
 type GetFileExecutor struct {
 }
 
-func (e *GetFileExecutor) Check(ctx Context, command string) error {
-	p := common.GetFileSyncPayload{}
-	if err := json.Unmarshal([]byte(command), &p); err != nil {
-		return err
-	}
-
-	if p.RelPath == "" {
-		return fmt.Errorf("GetFileExecutor invalid params:%v\n", p)
-	}
-
-	filePath := ctx.getFilePath(p.RelPath)
-	ex := ctx.CheckFileExist(p.RelPath)
-	if !ex {
-		return fmt.Errorf("GetFileExecutor file_path %s not exist", filePath)
-	}
-
-	//TODO implement me
-	log.Println("GetFileExecutor", "file_path", filePath, "exist")
-	return nil
-}
-
 type UpdateFileExecutor struct {
-}
-
-func (e *UpdateFileExecutor) Check(ctx Context, command string) error {
-	//TODO implement me
-	log.Println("implement me")
-	return nil
 }
 
 type DeleteFileExecutor struct {
 }
 
-func (e *DeleteFileExecutor) Check(ctx Context, command string) error {
-	//TODO implement me
-	log.Println("implement me")
-	return nil
-}
-
 func (*GetFileExecutor) Exec(ctx Context, conn net.Conn, command string) error {
-	p := common.GetFileSyncPayload{}
+	p := common.GetFileOpPayload{}
 	if err := json.Unmarshal([]byte(command), &p); err != nil {
 		return err
 	}
