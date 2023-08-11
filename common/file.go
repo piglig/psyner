@@ -3,9 +3,9 @@ package common
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/pkg/errors"
 	"io"
 	"strings"
+	"errors"
 )
 
 type FileSyncOp uint32
