@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 )
@@ -43,4 +44,12 @@ func (p *Packet) Write(w io.Writer) (err error) {
 		writtenLen += n
 	}
 	return
+}
+
+func (p *Packet) Bytes() []byte {
+	b := bytes.Buffer{}
+	_ = binary.Write(&b, binary.BigEndian, p.Op)
+	_ = binary.Write(&b, binary.BigEndian, p.Length)
+	_, _ = b.Write(p.Payload)
+	return b.Bytes()
 }
