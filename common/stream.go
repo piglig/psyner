@@ -12,6 +12,7 @@ type Stream struct {
 	in       chan *Packet
 	out      chan *Packet
 	value    atomic.Value
+	done     chan struct{}
 	OnError  func(err error)
 }
 
@@ -19,6 +20,7 @@ func NewStream(bufferSize int) *Stream {
 	s := &Stream{
 		in:      make(chan *Packet, bufferSize),
 		out:     make(chan *Packet, bufferSize),
+		done:    make(chan struct{}),
 		value:   atomic.Value{},
 		OnError: nil,
 	}
@@ -46,7 +48,7 @@ func (s *Stream) Connection() net.Conn {
 func (s *Stream) read(conn net.Conn) {
 	var op FileSyncOp
 
-	var length int64
+	var length uint64
 	for {
 		err := binary.Read(conn, binary.BigEndian, &op)
 		if err != nil {
@@ -75,5 +77,20 @@ func (s *Stream) read(conn net.Conn) {
 }
 
 func (s *Stream) write(conn net.Conn) {
+	for {
+		select {
+		case p := <-s.out:
+			err := p.Write(conn)
+			if err != nil {
+				return
+			}
+		case <-s.done:
+			return
+		}
+	}
+}
 
+func (s *Stream) Close() {
+	s.Connection().Close()
+	close(s.in)
 }
