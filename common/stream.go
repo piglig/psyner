@@ -13,7 +13,7 @@ type Stream struct {
 	out      chan *Packet
 	value    atomic.Value
 	done     chan struct{}
-	OnError  func(err error)
+	onError  func(err error)
 }
 
 func NewStream(bufferSize int) *Stream {
@@ -22,12 +22,20 @@ func NewStream(bufferSize int) *Stream {
 		out:     make(chan *Packet, bufferSize),
 		done:    make(chan struct{}),
 		value:   atomic.Value{},
-		OnError: nil,
+		onError: nil,
 	}
 
 	s.Incoming = s.in
 	s.Outgoing = s.out
 	return s
+}
+
+func (s *Stream) OnError(callback func(error)) {
+	if callback == nil {
+		panic("OnError is nil")
+	}
+
+	s.onError = callback
 }
 
 func (s *Stream) SetConnection(conn net.Conn) {
@@ -46,11 +54,19 @@ func (s *Stream) Connection() net.Conn {
 }
 
 func (s *Stream) read(conn net.Conn) {
+	var err error
 	var op FileSyncOp
-
 	var length uint64
+
+	defer func() {
+		if err != nil {
+			s.onError(err)
+			s.done <- struct{}{}
+		}
+	}()
+
 	for {
-		err := binary.Read(conn, binary.BigEndian, &op)
+		err = binary.Read(conn, binary.BigEndian, &op)
 		if err != nil {
 			return
 		}
